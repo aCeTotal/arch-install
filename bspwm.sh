@@ -3,20 +3,27 @@
 # Variables
 country=Norway
 kbmap=no
-output=DP-1
-resolution=2560x1440
-rate=100
+gpu_output=DP-1
+screen_resolution=2560x1440
+screen_refreshrate=100
 
 # Options
-aur_helper=true
-install_sddm=true
-gen_xprofile=true
-enable_multilib=true
-gen_nvidia_hook=true
+nvidia_gpu=true #Enable if NVIDIA GPU
+amd_gpu=false   #Enable if AMD GPU
+aur_helper=true #AUR-helper YAY
+install_sddm=true #SDDM display manager
+gaming=true #Gaming packages
+gen_xprofile=true #Generate .xprofile
+enable_multilib=true #Enabling multilib, for packages like Steam 
 
 sudo timedatectl set-ntp true
 sudo hwclock --systohc
 sudo reflector -c $country -a 12 --sort rate --save /etc/pacman.d/mirrorlist
+pacman -S --noconfirm archlinux-keyring
+pacman -S --noconfirm --needed pacman-contrib terminus-font
+setfont ter-v22b
+sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
 
 sudo firewall-cmd --add-port=1025-65535/tcp --permanent
 sudo firewall-cmd --add-port=1025-65535/udp --permanent
@@ -39,12 +46,13 @@ sudo pacman -S --noconfirm dina-font tamsyn-font bdf-unifont ttf-bitstream-vera 
 # Enable multilib and install steam
 if [[ $enable_multilib = true ]]; then
     sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
-    pacman -Sy --noconfirm --needed steam
+    pacman -Sy --noconfirm --needed
 fi
 
 # Install Gaming packages
+if [[ $gaming = true ]]; then
 sudo pacman -Sy
-sudo pacman -S --noconfirm --needed wine-staging winetricks
+sudo pacman -S --noconfirm --needed wine-staging winetricks steam
 sudo pacman -S --noconfirm --needed giflib lib32-giflib libpng lib32-libpng libldap lib32-libldap gnutls lib32-gnutls mpg123 lib32-mpg123 openal lib32-openal v4l-utils lib32-v4l-utils libpulse lib32-libpulse alsa-plugins lib32-alsa-plugins alsa-lib lib32-alsa-lib libjpeg-turbo lib32-libjpeg-turbo libxcomposite lib32-libxcomposite libxinerama lib32-libxinerama ncurses lib32-ncurses opencl-icd-loader lib32-opencl-icd-loader libxslt lib32-libxslt libva lib32-libva gtk3 lib32-gtk3 gst-plugins-base-libs lib32-gst-plugins-base-libs vulkan-icd-loader lib32-vulkan-icd-loader cups samba dosbox
 yay -S protonup
 yay -S mangohud
@@ -57,6 +65,7 @@ yay -S heroic-games-launcher-bin
 yay -S python-evdev
 yay -S lutris
 protonup
+fi
 
 # Install sddm
 if [[ $install_sddm = true ]]; then
@@ -70,7 +79,7 @@ cat > ~/.xprofile << EOF
 setxkbmap $kbmap &
 picom -f --experimental-backend &
 nitrogen --restore & 
-xrandr --output $output --mode $resolution --rate $rate &
+xrandr --output $gpu_output --mode $screen_resolution --rate $screen_refreshrate &
 nvidia-settings -a [gpu:0]/GPUPowerMizerMode=1 &
 
 polybar &
@@ -79,7 +88,7 @@ EOF
 fi
 
 # NVIDIA UPDATE HOOK
-if [[ $gen_nvidia_hook = true ]]; then
+if [[ $nvidia_gpu = true ]]; then
 sudo cat > /etc/pacman.d/hooks/nvidia.hook << EOF
 [Trigger]
 Operation=Install
