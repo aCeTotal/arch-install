@@ -221,7 +221,7 @@ network_selector
 
 # Pacstrap (setting up a base sytem onto the new root).
 print "Installing the base system (it may take a while)."
-pacstrap /mnt --needed sddm bspwm base linux-zen $microcode $gpudrivers linux-firmware linux-zen-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
+pacstrap /mnt --needed sddm bspwm dmenu base linux-zen $microcode $gpudrivers linux-firmware linux-zen-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
 
 # Setting up the hostname.
 hostname_selector
@@ -283,6 +283,13 @@ arch-chroot /mnt /bin/bash -e <<EOF
     #Add parallel downloading
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
 
+    echo "Installing YAY - AUR-Helper"
+    git clone https://aur.archlinux.org/yay.git
+    cd yay
+    makepkg -si
+    cd
+    rm -rf yay
+
     #Enable multilib
     sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
     pacman -Sy --noconfirm --needed
@@ -306,8 +313,16 @@ arch-chroot /mnt /bin/bash -e <<EOF
     grub-mkconfig -o /boot/grub/grub.cfg &>/dev/null
 
     # INSTALLING STEAM
-    echo "Installing Steam"
+    echo "Installing Steam and Discord"
     pacman -S --noconfirm --needed steam discord
+
+    # INSTALLING BRAVE-BROWSER
+    echo "Installing Brave-browser - The best browser :)"
+    yay -S brave-bin
+
+    # INSTALLING NITROGEN
+    echo "Installing nitrogen - Wallpaper Manager"
+    yay -S nitrogen
 
 EOF
 
