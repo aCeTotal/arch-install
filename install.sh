@@ -322,7 +322,7 @@ arch-chroot /mnt /bin/bash -e <<EOF
 
     # INSTALLING STEAM
     echo "Installing Steam"
-    pacman -S steam
+    pacman -S --noconfirm --needed steam discord
 
 EOF
 
