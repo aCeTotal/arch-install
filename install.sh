@@ -6,9 +6,9 @@ pacman -S --noconfirm archlinux-keyring #update keyrings to latest to prevent pa
 pacman -S --noconfirm --needed pacman-contrib terminus-font
 setfont ter-v22b
 sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-pacman -S --noconfirm --needed reflector rsync grub
+pacman -S --noconfirm --needed reflector
 cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
-reflector -a 48 -c $iso -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
+reflector -a 48 -c NORWAY -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
 
 # Pretty print (function).
 print () {
