@@ -1,7 +1,14 @@
 #!/usr/bin/env -S bash -e
 
 # Cleaning the TTY.
-clear
+timedatectl set-ntp true
+pacman -S --noconfirm archlinux-keyring #update keyrings to latest to prevent packages failing to install
+pacman -S --noconfirm --needed pacman-contrib terminus-font
+setfont ter-v22b
+sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+pacman -S --noconfirm --needed reflector rsync grub
+cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
+reflector -a 48 -c $iso -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
 
 # Pretty print (function).
 print () {
@@ -122,20 +129,17 @@ microcode_detector () {
 
 # Setting up the hostname (function).
 hostname_selector () {
-    read -r -p "Please enter the hostname: " hostname
+    read -r -p "Please enter the hostname (Enter empty to use arch-desktop): " hostname
     if [ -z "$hostname" ]; then
-        print "You need to enter a hostname in order to continue."
-        hostname_selector
+        print "arch-desktop will be used."
+        hostname="arch-desktop"
     fi
     echo "$hostname" > /mnt/etc/hostname
 }
 
 # Setting up the locale (function).
 locale_selector () {
-    read -r -p "Please insert the locale you use (format: xx_XX or enter empty to use en_US): " locale
-    if [ -z "$locale" ]; then
-        print "en_US will be used as default locale."
-        locale="en_US"
+    locale="en_US"
     fi
     echo "$locale.UTF-8 UTF-8"  > /mnt/etc/locale.gen
     echo "LANG=$locale.UTF-8" > /mnt/etc/locale.conf
@@ -143,10 +147,10 @@ locale_selector () {
 
 # Setting up the keyboard layout (function).
 keyboard_selector () {
-    read -r -p "Please insert the keyboard layout you use (enter empty to use US keyboard layout): " kblayout
+    read -r -p "Please insert the keyboard layout you use (enter empty to use Norwegian keyboard layout): " kblayout
     if [ -z "$kblayout" ]; then
-        print "US keyboard layout will be used by default."
-        kblayout="us"
+        print "Norwegian keyboard layout will be used by default."
+        kblayout="no-latin1"
     fi
     echo "KEYMAP=$kblayout" > /mnt/etc/vconsole.conf
 }
@@ -233,7 +237,7 @@ network_selector
 
 # Pacstrap (setting up a base sytem onto the new root).
 print "Installing the base system (it may take a while)."
-pacstrap /mnt --needed base linux-zen $microcode linux-firmware linux-zen-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
+pacstrap /mnt --needed sddm base linux-zen $microcode linux-firmware linux-zen-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
 
 # Setting up the hostname.
 hostname_selector
@@ -264,7 +268,7 @@ EOF
 # Configuring /etc/mkinitcpio.conf.
 print "Configuring /etc/mkinitcpio.conf."
 cat > /mnt/etc/mkinitcpio.conf <<EOF
-HOOKS=(base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems)
+HOOKS=(base systemd autodetect keyboard keymap sd-vconsole modconf block sd-encrypt filesystems)
 COMPRESSION=(zstd)
 EOF
 
@@ -291,6 +295,13 @@ arch-chroot /mnt /bin/bash -e <<EOF
     # Generating a new initramfs.
     echo "Creating a new initramfs."
     mkinitcpio -P &>/dev/null
+
+    #Add parallel downloading
+    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+
+    #Enable multilib
+    sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
+    pacman -Sy --noconfirm --needed
     
     # Snapper configuration
     echo "Configuring Snapper."
@@ -309,6 +320,10 @@ arch-chroot /mnt /bin/bash -e <<EOF
     # Creating grub config file.
     echo "Creating GRUB config file."
     grub-mkconfig -o /boot/grub/grub.cfg &>/dev/null
+
+    # INSTALLING STEAM
+    echo "Installing Steam"
+    pacman -S steam
 
 EOF
 
