@@ -93,25 +93,6 @@ microcode_detector () {
     fi
 }
 
-
-    # Graphics Drivers find and install
-gpu_detector () {
-    gpu_type=$(lspci)
-    if grep -E "NVIDIA|GeForce" <<< ${gpu_type}; then
-    echo "An NVIDIA GPU has been detected, the NVIDIA drivers will be installed!"
-    gpudrivers="nvidia-dkms nvidia-utils nvidia-settings"
-    elif lspci | grep 'VGA' | grep -E "Radeon|AMD"; then
-    echo "An AMD GPU has been detected, the AMD drivers will be installed!"
-    gpudrivers="xf86-video-amdgpu"
-    elif grep -E "Integrated Graphics Controller" <<< ${gpu_type}; then
-    echo "An Integrated Intel GPU has been detected, the Intel drivers will be installed!"
-    gpudrivers="libva-intel-driver libvdpau-va-gl lib32-vulkan-intel vulkan-intel libva-intel-driver libva-utils lib32-mesa"
-    elif grep -E "Intel Corporation UHD" <<< ${gpu_type}; then
-    echo "An Integrated Intel GPU has been detected, the Intel drivers will be installed!"
-    gpudrivers="libva-intel-driver libvdpau-va-gl lib32-vulkan-intel vulkan-intel libva-intel-driver libva-utils lib32-mesa"
-    fi
-}
-
 # Setting up the hostname (function).
 hostname_selector () {
     read -r -p "Please enter the hostname (Enter empty to use arch-desktop): " hostname
@@ -213,15 +194,12 @@ mount $ESP /mnt/boot/
 # Checking the microcode to install.
 microcode_detector
 
-# Checking GPU drivers to install
-gpu_detector
-
 # Setting up the network.
 network_selector
 
 # Pacstrap (setting up a base sytem onto the new root).
 print "Installing the base system (it may take a while)."
-pacstrap /mnt --needed sddm bspwm dmenu base linux-zen $microcode $gpudrivers linux-firmware linux-zen-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
+pacstrap /mnt --needed sddm bspwm dmenu base linux-zen $microcode nvidia-dkms nvidia-utils nvidia-settings linux-firmware linux-zen-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
 
 # Setting up the hostname.
 hostname_selector
