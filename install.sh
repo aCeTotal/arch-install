@@ -284,6 +284,7 @@ arch-chroot /mnt /bin/bash -e <<EOF
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
 
     echo "Installing YAY - AUR-Helper"
+    pacman -S git base-devel
     git clone https://aur.archlinux.org/yay.git
     cd yay
     makepkg -si
