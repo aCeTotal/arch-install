@@ -16,41 +16,6 @@ print () {
     echo -e "\e[1m\e[93m[ \e[92m•\e[93m ] \e[4m$1\e[0m"
 }
 
-# Virtualization check (function).
-virt_check () {
-    hypervisor=$(systemd-detect-virt)
-    case $hypervisor in
-        kvm )   print "KVM has been detected."
-                print "Installing guest tools."
-                pacstrap /mnt qemu-guest-agent >/dev/null
-                print "Enabling specific services for the guest tools."
-                systemctl enable qemu-guest-agent --root=/mnt &>/dev/null
-                ;;
-        vmware  )   print "VMWare Workstation/ESXi has been detected."
-                    print "Installing guest tools."
-                    pacstrap /mnt open-vm-tools >/dev/null
-                    print "Enabling specific services for the guest tools."
-                    systemctl enable vmtoolsd --root=/mnt &>/dev/null
-                    systemctl enable vmware-vmblock-fuse --root=/mnt &>/dev/null
-                    ;;
-        oracle )    print "VirtualBox has been detected."
-                    print "Installing guest tools."
-                    pacstrap /mnt virtualbox-guest-utils >/dev/null
-                    print "Enabling specific services for the guest tools."
-                    systemctl enable vboxservice --root=/mnt &>/dev/null
-                    ;;
-        microsoft ) print "Hyper-V has been detected."
-                    print "Installing guest tools."
-                    pacstrap /mnt hyperv >/dev/null
-                    print "Enabling specific services for the guest tools."
-                    systemctl enable hv_fcopy_daemon --root=/mnt &>/dev/null
-                    systemctl enable hv_kvp_daemon --root=/mnt &>/dev/null
-                    systemctl enable hv_vss_daemon --root=/mnt &>/dev/null
-                    ;;
-        * ) ;;
-    esac
-}
-
 # Selecting a way to handle internet connection (function). 
 network_selector () {
         print "Installing NetworkManager."
@@ -228,9 +193,6 @@ mount $ESP /mnt/boot/
 
 # Checking the microcode to install.
 microcode_detector
-
-# Virtualization check.
-virt_check
 
 # Setting up the network.
 network_selector
