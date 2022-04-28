@@ -140,7 +140,6 @@ hostname_selector () {
 # Setting up the locale (function).
 locale_selector () {
     locale="en_US"
-    fi
     echo "$locale.UTF-8 UTF-8"  > /mnt/etc/locale.gen
     echo "LANG=$locale.UTF-8" > /mnt/etc/locale.conf
 }
