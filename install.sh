@@ -1,6 +1,6 @@
 #!/usr/bin/env -S bash -e
 
-# Cleaning the TTY.
+# Download Setup && Cleaning the TTY.
 timedatectl set-ntp true
 pacman -S --noconfirm archlinux-keyring #update keyrings to latest to prevent packages failing to install
 pacman -S --noconfirm --needed pacman-contrib terminus-font
@@ -9,6 +9,7 @@ sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
 pacman -S --noconfirm --needed reflector
 cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
 reflector -a 48 -c SWEDEN -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
+clear
 
 # Pretty print (function).
 print () {
@@ -61,10 +62,10 @@ network_selector () {
 # Setting up a password for the LUKS Container (function).
 lukspass_selector () {
 	while true; do
-	read -r -s -p "Insert password for the LUKS container (you're not going to see the password): " password
+	read -r -s -p "Insert password for the LUKS Encryption Container (you're not going to see the password): " password
 		while [ -z "$password" ]; do
 		echo
-		print "You need to enter a password for the LUKS Container in order to continue."
+		print "You need to enter a password for the LUKS Encryption Container in order to continue."
 		read -r -s -p "Insert password for the LUKS container (you're not going to see the password): " password
 		[ -n "$password" ] && break
 		done
@@ -323,6 +324,22 @@ arch-chroot /mnt /bin/bash -e <<EOF
     # INSTALLING STEAM
     echo "Installing Steam"
     pacman -S --noconfirm --needed steam discord
+
+    # Graphics Drivers find and install
+    gpu_type=$(lspci)
+    if grep -E "NVIDIA|GeForce" <<< ${gpu_type}; then
+    echo "Did find a Nvidia GPU. Installing!"
+    pacman -S --noconfirm --needed nvidia-dkms nvidia-utils nvidia-settings
+    elif lspci | grep 'VGA' | grep -E "Radeon|AMD"; then
+    echo "Did find a AMD GPU. Installing!"
+    pacman -S --noconfirm --needed xf86-video-amdgpu
+    elif grep -E "Integrated Graphics Controller" <<< ${gpu_type}; then
+    echo "Did find a Integrated GPU. Installing!"
+    pacman -S --noconfirm --needed libva-intel-driver libvdpau-va-gl lib32-vulkan-intel vulkan-intel libva-intel-driver libva-utils lib32-mesa
+    elif grep -E "Intel Corporation UHD" <<< ${gpu_type}; then
+    echo "Did find a Integrated GPU. Installing!"  
+    pacman -S --needed --noconfirm libva-intel-driver libvdpau-va-gl lib32-vulkan-intel vulkan-intel libva-intel-driver libva-utils lib32-mesa
+    fi
 
 EOF
 
