@@ -1,2 +1,50 @@
-- Lage rep for dwm og dmenu og legge til cloning og installering i base-script.
-- Legge til alle keybindings i dwm
+- Lage rep for dwm og dmenu (Flexipatch) og legge til cloning og installering i base-script.
+- Legge til alle keybindings og andre forandringer i config for dwm og dmenu.
+- Legge til at root partition får LABEL arch
+
+- Lage installscript for installering av tkg-pds og kjøre dette scriptet til slutt i hovedscriptet.
+
+
+keybindings:
+Super + i = nitrogen
+Super + s = Soundsettings
+Super + enter = terminal
+Super + F1 = NIMS
+Super + F2 = PSUWEB
+Super + F10 = VPN
+Super + backspace = Browser
+Super + home = thunar
+Super + F12 = Steam
+Super + F11 = Discord
+
+
+
+bootctl install
+cd /boot/loader
+vim loader.conf
+
+###########
+timeout 2
+console-mode max
+default arch_tkg.conf
+###########
+
+cd entries/
+vim arch_tkg.conf 
+vim arch_zen.conf
+
+###########
+title  Arch Linux (tkg-pds)
+linux /vmlinuz-linux-tkg-pds
+initrd /intel-ucode.img
+initrd /initramfs-linux-tkg-pds.img
+options root="LABEL=arch" rw
+###########
+
+###########
+title  Arch Linux (zen)
+linux /vmlinuz-linux-zen
+initrd /intel-ucode.img
+initrd /initramfs-linux-zen.img
+options root="LABEL=arch" rw
+###########
