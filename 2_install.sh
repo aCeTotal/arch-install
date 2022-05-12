@@ -1475,16 +1475,6 @@ EOF
 make
 sudo make clean install
 cd
-sudo mkdir /usr/share/xsessions
-sudo cat > /usr/share/xsessions/dwm.desktop <<EOF
-[Desktop Entry]
-Encoding=UTF-8
-Name=Dwm
-Comment=Dynamic Window Manager
-Exec=dwm
-Icon=dwm
-Type=XSession
-EOF
 
 # Graphics Drivers find and install
 gpu_type=$(lspci)

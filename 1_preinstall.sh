@@ -444,6 +444,17 @@ do
     systemctl enable "$service" --root=/mnt &>/dev/null
 done
 
+sudo mkdir mnt/usr/share/xsessions
+cat > mnt/usr/share/xsessions/dwm.desktop <<EOF
+[Desktop Entry]
+Encoding=UTF-8
+Name=Dwm
+Comment=Dynamic Window Manager
+Exec=dwm
+Icon=dwm
+Type=XSession
+EOF
+
 # Finishing up.
 print "Done. Restart, login as root and run script 2"
 exit
