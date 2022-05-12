@@ -25,32 +25,32 @@ enable_multilib=true #Enabling multilib, for packages like Steam
 sudo timedatectl set-ntp true
 sudo hwclock --systohc
 sudo reflector -c $country -a 12 --sort rate --save /etc/pacman.d/mirrorlist
-pacman -S --noconfirm archlinux-keyring
-pacman -S --noconfirm --needed pacman-contrib terminus-font
+sudo pacman -S archlinux-keyring
+sudo pacman -S pacman-contrib terminus-font
 setfont ter-v22b
-sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
+sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+sudo cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
 
 sudo firewall-cmd --add-port=1025-65535/tcp --permanent
 sudo firewall-cmd --add-port=1025-65535/udp --permanent
 sudo firewall-cmd --reload
 sudo virsh net-autostart default
 
-sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
-sed -i '94s/.//' /etc/pacman.conf
-sed -i '95s/.//' /etc/pacman.conf
-pacman -Sy --noconfirm --needed
+sudo sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
+sudo sed -i '94s/.//' /etc/pacman.conf
+sudo sed -i '95s/.//' /etc/pacman.conf
+sudo pacman -Sy --noconfirm --needed
 
 
-pacman -S --noconfirm --needed git base-devel
+sudo pacman -S --noconfirm --needed git base-devel
 cd /tmp
 git clone https://aur.archlinux.org/yay.git
 cd yay/;makepkg -si --noconfirm;cd
 
 # Install packages
-sudo pacman -S --noconfirm --needed xorg picom nitrogen vim alacritty efibootmgr networkmanager network-manager-applet dialog wpa_supplicant mtools dosfstools base-devel linux-zen-headers avahi xdg-user-dirs xdg-utils gvfs gvfs-smb nfs-utils inetutils dnsutils bluez bluez-utils cups hplip alsa-utils pipewire pipewire-alsa pipewire-pulse pipewire-jack bash-completion openssh rsync reflector acpi acpi_call virt-manager qemu qemu-arch-extra edk2-ovmf bridge-utils dnsmasq vde2 openbsd-netcat iptables-nft ipset firewalld flatpak sof-firmware nss-mdns acpid os-prober ntfs-3g terminus-font
+sudo pacman -S xorg picom nitrogen vim alacritty efibootmgr networkmanager network-manager-applet dialog wpa_supplicant mtools dosfstools base-devel linux-zen-headers avahi xdg-user-dirs xdg-utils gvfs gvfs-smb nfs-utils inetutils dnsutils bluez bluez-utils cups hplip alsa-utils pipewire pipewire-alsa pipewire-pulse pipewire-jack bash-completion openssh rsync reflector acpi acpi_call virt-manager qemu qemu-arch-extra edk2-ovmf bridge-utils dnsmasq vde2 openbsd-netcat iptables-nft ipset firewalld flatpak sof-firmware nss-mdns acpid os-prober ntfs-3g terminus-font
 # Install fonts
-sudo pacman -S --noconfirm dina-font tamsyn-font bdf-unifont ttf-bitstream-vera ttf-croscore ttf-dejavu ttf-droid gnu-free-fonts ttf-ibm-plex ttf-liberation ttf-linux-libertine noto-fonts ttf-roboto tex-gyre-fonts ttf-ubuntu-font-family ttf-anonymous-pro ttf-cascadia-code ttf-fantasque-sans-mono ttf-fira-mono ttf-hack ttf-fira-code ttf-inconsolata ttf-jetbrains-mono ttf-monofur adobe-source-code-pro-fonts cantarell-fonts inter-font ttf-opensans gentium-plus-font ttf-junicode adobe-source-han-sans-otc-fonts adobe-source-han-serif-otc-fonts noto-fonts-cjk noto-fonts-emoji
+sudo pacman -S dina-font tamsyn-font bdf-unifont ttf-bitstream-vera ttf-croscore ttf-dejavu ttf-droid gnu-free-fonts ttf-ibm-plex ttf-liberation ttf-linux-libertine noto-fonts ttf-roboto tex-gyre-fonts ttf-ubuntu-font-family ttf-anonymous-pro ttf-cascadia-code ttf-fantasque-sans-mono ttf-fira-mono ttf-hack ttf-fira-code ttf-inconsolata ttf-jetbrains-mono ttf-monofur adobe-source-code-pro-fonts cantarell-fonts inter-font ttf-opensans gentium-plus-font ttf-junicode adobe-source-han-sans-otc-fonts adobe-source-han-serif-otc-fonts noto-fonts-cjk noto-fonts-emoji
 
 #Install dwm and dmenu
 mkdir ~/.config
@@ -1475,8 +1475,8 @@ EOF
 make
 sudo make clean install
 cd
-mkdir /usr/share/xsessions
-cat > /usr/share/xsessions/dwm.desktop <<EOF
+sudo mkdir /usr/share/xsessions
+sudo cat > /usr/share/xsessions/dwm.desktop <<EOF
 [Desktop Entry]
 Encoding=UTF-8
 Name=Dwm
