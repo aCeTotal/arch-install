@@ -402,6 +402,7 @@ if [ -n "$username" ]; then
     arch-chroot /mnt useradd -m -G wheel -s /bin/bash "$username"
     sed -i '/^# %wheel ALL=(ALL) ALL/s/^# //' /mnt/etc/sudoers
     usermod -aG libvirt $username
+    sed -i '82s/.//' /mnt/etc/sudoers
     echo "$username ALL=(ALL) ALL" >> /mnt/etc/sudoers.d/$username
     print "Setting user password for $username."
     echo "$username:$userpass" | arch-chroot /mnt chpasswd
