@@ -19,7 +19,7 @@ nvidia_gpu=true #Enable if NVIDIA GPU
 aur_helper=true #AUR-helper YAY
 install_ly=true #SDDM display manager
 gaming=true #Gaming packages
-gen_xprofile=true #Generate .xprofile
+gen_autostart=true #Generate .xprofile
 enable_multilib=true #Enabling multilib, for packages like Steam 
 
 sudo timedatectl set-ntp true
@@ -36,18 +36,16 @@ sudo firewall-cmd --add-port=1025-65535/udp --permanent
 sudo firewall-cmd --reload
 sudo virsh net-autostart default
 
-# Enable multilib and install steam
-if [[ $enable_multilib = true ]]; then
-    sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
-    pacman -Sy --noconfirm --needed
-fi
+sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
+sed -i '94s/.//' /etc/pacman.conf
+sed -i '95s/.//' /etc/pacman.conf
+pacman -Sy --noconfirm --needed
 
-if [[ $aur_helper = true ]]; then
-    pacman -S --noconfirm --needed git base-devel
-    cd /tmp
-    git clone https://aur.archlinux.org/yay.git
-    cd yay/;makepkg -si --noconfirm;cd
-fi
+
+pacman -S --noconfirm --needed git base-devel
+cd /tmp
+git clone https://aur.archlinux.org/yay.git
+cd yay/;makepkg -si --noconfirm;cd
 
 # Install packages
 sudo pacman -S --noconfirm --needed xorg picom nitrogen vim alacritty efibootmgr networkmanager network-manager-applet dialog wpa_supplicant mtools dosfstools base-devel linux-zen-headers avahi xdg-user-dirs xdg-utils gvfs gvfs-smb nfs-utils inetutils dnsutils bluez bluez-utils cups hplip alsa-utils pipewire pipewire-alsa pipewire-pulse pipewire-jack bash-completion openssh rsync reflector acpi acpi_call virt-manager qemu qemu-arch-extra edk2-ovmf bridge-utils dnsmasq vde2 openbsd-netcat iptables-nft ipset firewalld flatpak sof-firmware nss-mdns acpid os-prober ntfs-3g terminus-font
