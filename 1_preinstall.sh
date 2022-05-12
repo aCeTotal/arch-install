@@ -401,6 +401,8 @@ if [ -n "$username" ]; then
     print "Adding the user $username to the system with root privilege."
     arch-chroot /mnt useradd -m -G wheel -s /bin/bash "$username"
     sed -i '/^# %wheel ALL=(ALL) ALL/s/^# //' /mnt/etc/sudoers
+    usermod -aG libvirt $username
+    echo "$username ALL=(ALL) ALL" >> /mnt/etc/sudoers.d/$username
     print "Setting user password for $username."
     echo "$username:$userpass" | arch-chroot /mnt chpasswd
 fi
@@ -430,31 +432,6 @@ cat > /mnt/etc/systemd/zram-generator.conf <<EOF
 zram-size = min(ram, 8192)
 EOF
 
-# System install script.
-print "Making a startup script to install the rest of the system after reboot"
-cat > /mnt/etc/systemd/system/systeminstall.service <<EOF
-[Unit]
-Description=Script
-
-[Service]
-ExecStart=/usr/bin/systeminstall.sh
-
-[Install]
-WantedBy=multi-user.target 
-EOF
-
-cat > /mnt/usr/bin/systeminstall.sh <<EOF
-#!/bin/bash
-
-cd /tmp
-git clone https://github.com/aCeTotal/arch-install.git
-cd arch-install
-chmod +x 2_install.sh
-./2_install.sh
-EOF
-
-chmod +x /mnt/usr/bin/systeminstall.sh
-
 # Pacman eye-candy features.
 print "Enabling colours, animations, and parallel in pacman."
 sed -Ei 's/^#(Color)$/\1\nILoveCandy/;s/^#(ParallelDownloads).*/\1 = 10/' /mnt/etc/pacman.conf
@@ -467,5 +444,5 @@ do
 done
 
 # Finishing up.
-print "Done, you may now wish to reboot (further changes can be done by chrooting into /mnt)."
+print "Done. Restart, login as root and run script 2"
 exit
