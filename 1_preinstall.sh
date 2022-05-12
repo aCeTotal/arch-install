@@ -1,84 +1,155 @@
 #!/usr/bin/env -S bash -e
 
-# Download Setup && Cleaning the TTY.
-timedatectl set-ntp true
-pacman -S --noconfirm archlinux-keyring #update keyrings to latest to prevent packages failing to install
-pacman -S --noconfirm --needed pacman-contrib terminus-font
-setfont ter-v22b
-sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-pacman -S --noconfirm --needed reflector
-cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
-reflector -a 48 -c SWEDEN -f 5 -l 10 --sort rate --save /etc/pacman.d/mirrorlist
+# Cleaning the TTY.
 clear
+setfont ter-v22b
+
+# Cosmetics (colours for text).
+BOLD='\e[1m'
+BRED='\e[91m'
+BBLUE='\e[34m'  
+BGREEN='\e[92m'
+BYELLOW='\e[93m'
+RESET='\e[0m'
 
 # Pretty print (function).
 print () {
-    echo -e "\e[1m\e[93m[ \e[92m•\e[93m ] \e[4m$1\e[0m"
+    echo -e "${BOLD}${BYELLOW}[ ${BGREEN}•${BYELLOW} ] $1${RESET}"
+}
+# Alert user of bad input (function).
+incEcho () {
+    echo -e "${BOLD}${BRED}[ ${BBLUE}•${BRED} ] $1${RESET}"
 }
 
-# Selecting a way to handle internet connection (function). 
+# Virtualization check (function).
+virt_check () {
+    hypervisor=$(systemd-detect-virt)
+    case $hypervisor in
+        kvm )   print "KVM has been detected."
+                print "Installing guest tools."
+                pacstrap /mnt qemu-guest-agent >/dev/null
+                print "Enabling specific services for the guest tools."
+                systemctl enable qemu-guest-agent --root=/mnt &>/dev/null
+                ;;
+        vmware  )   print "VMWare Workstation/ESXi has been detected."
+                    print "Installing guest tools."
+                    pacstrap /mnt open-vm-tools >/dev/null
+                    print "Enabling specific services for the guest tools."
+                    systemctl enable vmtoolsd --root=/mnt &>/dev/null
+                    systemctl enable vmware-vmblock-fuse --root=/mnt &>/dev/null
+                    ;;
+        oracle )    print "VirtualBox has been detected."
+                    print "Installing guest tools."
+                    pacstrap /mnt virtualbox-guest-utils >/dev/null
+                    print "Enabling specific services for the guest tools."
+                    systemctl enable vboxservice --root=/mnt &>/dev/null
+                    ;;
+        microsoft ) print "Hyper-V has been detected."
+                    print "Installing guest tools."
+                    pacstrap /mnt hyperv >/dev/null
+                    print "Enabling specific services for the guest tools."
+                    systemctl enable hv_fcopy_daemon --root=/mnt &>/dev/null
+                    systemctl enable hv_kvp_daemon --root=/mnt &>/dev/null
+                    systemctl enable hv_vss_daemon --root=/mnt &>/dev/null
+    esac
+}
+
+# Selecting a kernel to install (function).
+kernel_selector () {
+    kernel="linux-zen"
+}
+
+# Selecting a way to handle internet connection (function).
 network_selector () {
-        print "Installing NetworkManager."
-        pacstrap /mnt networkmanager >/dev/null
-        print "Enabling NetworkManager."
-        systemctl enable NetworkManager --root=/mnt &>/dev/null
+    print "Network utilities:"
+    print "1) IWD: iNet wireless daemon is a wireless daemon for Linux written by Intel (WiFi-only)"
+    print "2) NetworkManager: Universal network utility to automatically connect to networks (both WiFi and Ethernet, highly recommended)"
+    print "3) wpa_supplicant: Cross-platform supplicant with support for WEP, WPA and WPA2 (WiFi-only, a DHCP client will be automatically installed as well)"
+    print "4) dhcpcd: Basic DHCP client (Ethernet only or VMs)"
+    print "5) I will do this on my own (only advanced users)"
+    read -r -p "Insert the number of the corresponding networking utility: " network_choice
+    if ! ((1 <= network_choice <= 5)); then
+        incEcho "You did not enter a valid selection."
+        return 1
+    fi
+    return 0
 }
 
-# Setting up a password for the LUKS Container (function).
+# Installing the chosen networking method to the system (function).
+network_installer () {
+    case $network_choice in
+        1 ) print "Installing IWD."
+            pacstrap /mnt iwd >/dev/null
+            print "Enabling IWD."
+            systemctl enable iwd --root=/mnt &>/dev/null
+            ;;
+        2 ) print "Installing NetworkManager."
+            pacstrap /mnt networkmanager >/dev/null
+            print "Enabling NetworkManager."
+            systemctl enable NetworkManager --root=/mnt &>/dev/null
+            ;;
+        3 ) print "Installing wpa_supplicant and dhcpcd."
+            pacstrap /mnt wpa_supplicant dhcpcd >/dev/null
+            print "Enabling wpa_supplicant and dhcpcd."
+            systemctl enable wpa_supplicant --root=/mnt &>/dev/null
+            systemctl enable dhcpcd --root=/mnt &>/dev/null
+            ;;
+        4 ) print "Installing dhcpcd."
+            pacstrap /mnt dhcpcd >/dev/null
+            print "Enabling dhcpcd."
+            systemctl enable dhcpcd --root=/mnt &>/dev/null
+    esac
+}
+
+# User enters a password for the LUKS Container (function).
 lukspass_selector () {
-	while true; do
-	read -r -s -p "Insert password for the LUKS Encryption Container (you're not going to see the password): " password
-		while [ -z "$password" ]; do
-		echo
-		print "You need to enter a password for the LUKS Encryption Container in order to continue."
-		read -r -s -p "Insert password for the LUKS container (you're not going to see the password): " password
-		[ -n "$password" ] && break
-		done
-	echo
-	read -r -s -p "Password (again): " password2
-	echo
-	[ "$password" = "$password2" ] && break
-	echo "Passwords don't match, try again."
-	done
-    echo -n "$password" | cryptsetup luksFormat "$CRYPTROOT" -d -
-    echo -n "$password" | cryptsetup open "$CRYPTROOT" cryptroot -d -
-    BTRFS="/dev/mapper/cryptroot"
+    read -r -s -p "Insert the password for the LUKS container (you're not going to see the password): " password
+    if [ -z "$password" ]; then
+        incEcho "You need to enter a password for the LUKS Container in order to continue."
+        return 1
+    fi
+    echo
+    read -r -s -p "Insert the password for the LUKS container again: " password2
+    echo
+    if [ "$password" != "$password2" ]; then
+        incEcho "Passwords don't match, please try again."
+        return 1
+    fi
+    return 0
 }
 
-# Setting up a password for the user account (function).
+# User enters a password for the user account (function).
 userpass_selector () {
-while true; do
-  read -r -s -p "Set a user password for $username: " userpass
-	while [ -z "$userpass" ]; do
-	echo
-	print "You need to enter a password for $username."
-	read -r -s -p "Set a user password for $username: " userpass
-	[ -n "$userpass" ] && break
-	done
-  echo
-  read -r -s -p "Insert password again: " userpass2
-  echo
-  [ "$userpass" = "$userpass2" ] && break
-  echo "Passwords don't match, try again."
-done
+    read -r -s -p "Set a user password for $username: " userpass
+    if [ -z "$userpass" ]; then
+        incEcho "\nYou need to enter a password for $username."
+        return 1
+    fi
+    echo
+    read -r -s -p "Insert password again: " userpass2
+    echo
+    if [ "$userpass" != "$userpass2" ]; then
+        incEcho "Passwords don't match, try again."
+        return 1
+    fi
+    return 0
 }
 
-# Setting up a password for the root account (function).
+# User enters a password for the root account (function).
 rootpass_selector () {
-while true; do
-  read -r -s -p "Set a root password: " rootpass
-	while [ -z "$rootpass" ]; do
-	echo
-	print "You need to enter a root password."
-	read -r -s -p "Set a root password: " rootpass
-	[ -n "$rootpass" ] && break
-	done
-  echo
-  read -r -s -p "Password (again): " rootpass2
-  echo
-  [ "$rootpass" = "$rootpass2" ] && break
-  echo "Passwords don't match, try again."
-done
+    read -r -s -p "Set a root password: " rootpass
+    if [ -z "$rootpass" ]; then
+        incEcho "\nYou need to enter a root password."
+        return 1
+    fi
+    echo
+    read -r -s -p "Password (again): " rootpass2
+    echo
+    if [ "$rootpass" != "$rootpass2" ]; then
+        incEcho "Passwords don't match, try again."
+        return 1
+    fi
+    return 0
 }
 
 # Microcode detector (function).
@@ -93,54 +164,103 @@ microcode_detector () {
     fi
 }
 
-# Setting up the hostname (function).
+# User enters a hostname (function).
 hostname_selector () {
-    read -r -p "Please enter the hostname (Enter empty to use arch-desktop): " hostname
+    read -r -p "Please enter the hostname: " hostname
     if [ -z "$hostname" ]; then
-        print "arch-desktop will be used."
-        hostname="arch-desktop"
+        incEcho "You need to enter a hostname in order to continue."
+        return 1
     fi
-    echo "$hostname" > /mnt/etc/hostname
+    return 0
 }
 
-# Setting up the locale (function).
+# User chooses the locale (function).
 locale_selector () {
-    locale="en_US"
-    echo "$locale.UTF-8 UTF-8"  > /mnt/etc/locale.gen
-    echo "LANG=$locale.UTF-8" > /mnt/etc/locale.conf
+    read -r -p "Please insert the locale you use (format: xx_XX. Enter empty to use en_US, or \"/\" to search locales): " locale
+    case $locale in
+        '') locale="en_US.UTF-8"
+            print "$locale will be the default locale."
+            return 0;;
+        '/') sed -E '/^# +|^#$/d;s/^#| *$//g;s/ .*/      (Charset:&)/' /etc/locale.gen | less -M
+             clear
+             return 1;;
+        *) if ! grep -q "^#\?$(sed 's/[].*[]/\\&/g' <<< $locale) " /etc/locale.gen; then
+               incEcho "The specified locale doesn't exist or isn't supported."
+               return 1
+           fi
+           return 0
+    esac
 }
 
-# Setting up the keyboard layout (function).
+# User chooses the console keyboard layout (function).
 keyboard_selector () {
-    read -r -p "Please insert the keyboard layout you use (enter empty to use Norwegian keyboard layout): " kblayout
-    if [ -z "$kblayout" ]; then
-        print "Norwegian keyboard layout will be used by default."
-        kblayout="no-latin1"
-    fi
-    echo "KEYMAP=$kblayout" > /mnt/etc/vconsole.conf
+    read -r -p "Please insert the keyboard layout to use in console (enter empty to use US, or \"/\" to look up for keyboard layouts): " kblayout
+    case $kblayout in
+        '') kblayout="no-latin1"
+            print "The standard NORWEGIAN will be used as the default console keymap."
+            return 0;;
+        '/') localectl list-keymaps
+             clear
+             return 1;;
+        *) if ! localectl list-keymaps | grep -Fxq $kblayout; then
+               incEcho "The specified keymap doesn't exist."
+               return 1
+           fi
+           print "Changing console layout to $kblayout."
+           loadkeys $kblayout
+           return 0
+    esac
+
 }
 
-# Selecting the target for the installation.
+# Welcome screen.
 print "Welcome to easy-arch, a script made in order to simplify the process of installing Arch Linux."
-PS3="Please select the disk NUMBER e.g. 1 where Arch Linux is going to be installed: "
+
+# Setting up keyboard layout.
+until keyboard_selector; do : ; done
+
+# Choosing the target for the installation.
+print "Available disks for the installation:"
+PS3="Please select the disk NUMBER (e.g. 1) where Arch Linux is going to be installed: "
 select ENTRY in $(lsblk -dpnoNAME|grep -P "/dev/sd|nvme|vd");
 do
     DISK=$ENTRY
-    print "Installing Arch Linux on $DISK."
+    print "Arch Linux will be installed to $DISK."
     break
 done
 
-# Deleting old partition scheme.
-read -r -p "This will delete the current partition table on $DISK. Do you agree [y/N]? " response
-response=${response,,}
-if [[ "$response" =~ ^(yes|y)$ ]]; then
-    print "Wiping $DISK."
-    wipefs -af "$DISK" &>/dev/null
-    sgdisk -Zo "$DISK" &>/dev/null
-else
+# Warn user about deletion of old partition scheme.
+echo -en "${BOLD}${BRED}This will delete the current partition table on $DISK once installation starts. Do you agree [y/N]?:${RESET} "
+read -r disk_response
+if ! [[ "${disk_response,,}" =~ ^(yes|y)$ ]]; then
     print "Quitting."
     exit
 fi
+
+# Setting up LUKS password.
+until lukspass_selector; do : ; done
+
+# Setting up the kernel.
+until kernel_selector; do : ; done
+
+# User choses the network.
+until network_selector; do : ; done
+
+# User choses the locale.
+until locale_selector; do : ; done
+
+# User choses the hostname.
+until hostname_selector; do : ; done
+
+# User chooses username.
+read -r -p "Please enter name for a user account (enter empty to not create one): " username
+until userpass_selector; do : ; done
+until rootpass_selector; do : ; done
+
+# Deleting old partition scheme.
+print "Wiping $DISK."
+wipefs -af "$DISK" &>/dev/null
+sgdisk -Zo "$DISK" &>/dev/null
 
 # Creating a new partition scheme.
 print "Creating the partitions on $DISK."
@@ -163,7 +283,9 @@ mkfs.fat -F 32 $ESP &>/dev/null
 
 # Creating a LUKS Container for the root partition.
 print "Creating LUKS Container for the root partition."
-lukspass_selector
+echo -n "$password" | cryptsetup luksFormat "$CRYPTROOT" -d -
+echo -n "$password" | cryptsetup open "$CRYPTROOT" cryptroot -d -
+BTRFS="/dev/mapper/cryptroot"
 
 # Formatting the LUKS Container as BTRFS.
 print "Formatting the LUKS container as BTRFS."
@@ -172,96 +294,84 @@ mount $BTRFS /mnt
 
 # Creating BTRFS subvolumes.
 print "Creating BTRFS subvolumes."
-for volume in @ @home @root @srv @snapshots @var_log @var_pkgs
-do
-    btrfs su cr /mnt/$volume
+subvols=(snapshots var_pkgs var_log home root srv)
+for subvol in '' "${subvols[@]}"; do
+    btrfs su cr /mnt/@"$subvol"
 done
 
 # Mounting the newly created subvolumes.
 umount /mnt
 print "Mounting the newly created subvolumes."
-mount -o ssd,noatime,compress-force=zstd:3,discard=async,subvol=@ $BTRFS /mnt
-mkdir -p /mnt/{home,root,srv,.snapshots,/var/log,/var/cache/pacman/pkg,boot}
-mount -o ssd,noatime,compress-force=zstd:3,discard=async,subvol=@home $BTRFS /mnt/home
-mount -o ssd,noatime,compress-force=zstd:3,discard=async,subvol=@root $BTRFS /mnt/root
-mount -o ssd,noatime,compress-force=zstd:3,discard=async,subvol=@srv $BTRFS /mnt/srv
-mount -o ssd,noatime,compress-force=zstd:3,discard=async,subvol=@snapshots $BTRFS /mnt/.snapshots
-mount -o ssd,noatime,compress-force=zstd:3,discard=async,subvol=@var_log $BTRFS /mnt/var/log
-mount -o ssd,noatime,compress-force=zstd:3,discard=async,subvol=@var_pkgs $BTRFS /mnt/var/cache/pacman/pkg
+mountopts="ssd,noatime,compress-force=zstd:3,discard=async"
+mount -o $mountopts,subvol=@ $BTRFS /mnt
+mkdir -p /mnt/{home,root,srv,.snapshots,var/{log,cache/pacman/pkg},boot}
+for subvol in "${subvols[@]:2}"; do
+    mount -o "$mountopts",subvol=@"$subvol" "$BTRFS" /mnt/"${subvol//_//}"
+done
+mount -o $mountopts,subvol=@snapshots $BTRFS /mnt/.snapshots
+mount -o $mountopts,subvol=@var_pkgs $BTRFS /mnt/var/cache/pacman/pkg
 chattr +C /mnt/var/log
 mount $ESP /mnt/boot/
 
-# Checking the microcode to install.
-microcode_detector
-
-# Setting up the network.
-network_selector
-
 # Pacstrap (setting up a base sytem onto the new root).
 print "Installing the base system (it may take a while)."
-pacstrap /mnt --needed nvidia-dkms nvidia-utils nvidia-settings vim base linux-zen $microcode linux-firmware linux-zen-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
+pacstrap /mnt --needed base $kernel $microcode linux-firmware $kernel-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
 
 # Setting up the hostname.
-hostname_selector
+echo "$hostname" > /mnt/etc/hostname
 
 # Generating /etc/fstab.
 print "Generating a new fstab."
 genfstab -U /mnt >> /mnt/etc/fstab
 
-# Setting username.
-read -r -p "Please enter name for a user account (enter empty to not create one): " username
-userpass_selector
-rootpass_selector
+# Configure selected locale and console keymap
+sed -i "/^#$locale/s/^#//" /mnt/etc/locale.gen
+echo "LANG=$locale" > /mnt/etc/locale.conf
+echo "KEYMAP=$kblayout" > /mnt/etc/vconsole.conf
 
-# Setting up the locale.
-locale_selector
+# Checking the microcode to install.
+microcode_detector
 
-# Setting up keyboard layout.
-keyboard_selector
+# Virtualization check.
+virt_check
 
-# Setting hosts file.
-print "Setting hosts file."
-cat > /mnt/etc/hosts <<EOF
-127.0.0.1   localhost
-::1         localhost
-127.0.1.1   $hostname.localdomain   $hostname
-EOF
+# Setting up the network.
+network_installer
 
 # Configuring /etc/mkinitcpio.conf.
 print "Configuring /etc/mkinitcpio.conf."
 cat > /mnt/etc/mkinitcpio.conf <<EOF
-MODULES=($microcode btrfs nvidia nvidia_modeset nvidia_uvm nvidia_drm)
-HOOKS=(base systemd autodetect keyboard keymap sd-vconsole modconf block sd-encrypt filesystems)
+HOOKS=(base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems)
 COMPRESSION=(zstd)
 EOF
 
 # Setting up LUKS2 encryption in grub.
 print "Setting up grub config."
 UUID=$(blkid -s UUID -o value $CRYPTROOT)
-sed -i "s,^GRUB_CMDLINE_LINUX=\"\",GRUB_CMDLINE_LINUX=\"rd.luks.name=$UUID=cryptroot root=$BTRFS\",g" /mnt/etc/default/grub
+sed -i "\,^GRUB_CMDLINE_LINUX=\"\",s,\",&rd.luks.name=$UUID=cryptroot root=$BTRFS," /mnt/etc/default/grub
 sed -i 's/GRUB_DEFAULT=.*/GRUB_DEFAULT=saved/g' /mnt/etc/default/grub
 sudo sed -i '/GRUB_SAVEDEFAULT=.*/d' /mnt/etc/default/grub
 sudo sed -i '$aGRUB_SAVEDEFAULT=true' /mnt/etc/default/grub
 
-# Configuring the system.    
+# Configuring the system.
 arch-chroot /mnt /bin/bash -e <<EOF
 
     # Setting up timezone.
     echo "Setting up the timezone."
     ln -sf /usr/share/zoneinfo/$(curl -s http://ip-api.com/line?fields=timezone) /etc/localtime &>/dev/null
-    
+
     # Setting up clock.
     echo "Setting up the system clock."
     hwclock --systohc
-    
+
     # Generating locales.
     echo "Generating locales."
     locale-gen &>/dev/null
-    
+
     # Generating a new initramfs.
     echo "Creating a new initramfs."
     mkinitcpio -P &>/dev/null
-    
+
     # Snapper configuration
     echo "Configuring Snapper."
     umount /.snapshots
@@ -271,7 +381,7 @@ arch-chroot /mnt /bin/bash -e <<EOF
     mkdir /.snapshots
     mount -a
     chmod 750 /.snapshots
-    
+
     # Installing GRUB.
     echo "Installing GRUB on /boot."
     grub-install --target=x86_64-efi --efi-directory=/boot/ --bootloader-id=GRUB &>/dev/null
@@ -290,8 +400,8 @@ echo "root:$rootpass" | arch-chroot /mnt chpasswd
 if [ -n "$username" ]; then
     print "Adding the user $username to the system with root privilege."
     arch-chroot /mnt useradd -m -G wheel -s /bin/bash "$username"
-    sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /mnt/etc/sudoers
-    print "Setting user password for $username." 
+    sed -i '/^# %wheel ALL=(ALL) ALL/s/^# //' /mnt/etc/sudoers
+    print "Setting user password for $username."
     echo "$username:$userpass" | arch-chroot /mnt chpasswd
 fi
 
@@ -320,7 +430,7 @@ cat > /mnt/etc/systemd/zram-generator.conf <<EOF
 zram-size = min(ram, 8192)
 EOF
 
-# ZRAM configuration.
+# System install script.
 print "Making a startup script to install the rest of the system after reboot"
 cat > /mnt/etc/systemd/system/systeminstall.service <<EOF
 [Unit]
@@ -347,7 +457,7 @@ chmod +x /mnt/usr/bin/systeminstall.sh
 
 # Pacman eye-candy features.
 print "Enabling colours, animations, and parallel in pacman."
-sed -i 's/#Color/Color\nILoveCandy/;s/^#ParallelDownloads.*$/ParallelDownloads = 20/' /mnt/etc/pacman.conf
+sed -Ei 's/^#(Color)$/\1\nILoveCandy/;s/^#(ParallelDownloads).*/\1 = 10/' /mnt/etc/pacman.conf
 
 # Enabling various services.
 print "Enabling Reflector, automatic snapshots, BTRFS scrubbing and systemd-oomd."
@@ -357,5 +467,5 @@ do
 done
 
 # Finishing up.
-print "Preinstall script - Done! Reboot and the next script will automaticlly start after you log in =)"
+print "Done, you may now wish to reboot (further changes can be done by chrooting into /mnt)."
 exit
