@@ -8,7 +8,7 @@ setfont ter-v22b
 sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
 pacman -S --noconfirm --needed reflector
 cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
-reflector -a 48 -c SWEDEN -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
+reflector -a 48 -c NORWAY -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
 clear
 
 # Pretty print (function).
@@ -199,7 +199,7 @@ network_selector
 
 # Pacstrap (setting up a base sytem onto the new root).
 print "Installing the base system (it may take a while)."
-pacstrap /mnt --needed sddm bspwm dmenu base linux-zen $microcode nvidia-dkms nvidia-utils nvidia-settings linux-firmware linux-zen-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
+pacstrap /mnt --needed nvidia-dkms nvidia-utils nvidia-settings vim base linux-zen $microcode linux-firmware linux-zen-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
 
 # Setting up the hostname.
 hostname_selector
@@ -230,6 +230,7 @@ EOF
 # Configuring /etc/mkinitcpio.conf.
 print "Configuring /etc/mkinitcpio.conf."
 cat > /mnt/etc/mkinitcpio.conf <<EOF
+MODULES=($microcode btrfs nvidia nvidia_modeset nvidia_uvm nvidia_drm)
 HOOKS=(base systemd autodetect keyboard keymap sd-vconsole modconf block sd-encrypt filesystems)
 COMPRESSION=(zstd)
 EOF
@@ -238,6 +239,9 @@ EOF
 print "Setting up grub config."
 UUID=$(blkid -s UUID -o value $CRYPTROOT)
 sed -i "s,^GRUB_CMDLINE_LINUX=\"\",GRUB_CMDLINE_LINUX=\"rd.luks.name=$UUID=cryptroot root=$BTRFS\",g" /mnt/etc/default/grub
+sed -i 's/GRUB_DEFAULT=.*/GRUB_DEFAULT=saved/g' /mnt/etc/default/grub
+sudo sed -i '/GRUB_SAVEDEFAULT=.*/d' /mnt/etc/default/grub
+sudo sed -i '$aGRUB_SAVEDEFAULT=true' /mnt/etc/default/grub
 
 # Configuring the system.    
 arch-chroot /mnt /bin/bash -e <<EOF
@@ -257,21 +261,6 @@ arch-chroot /mnt /bin/bash -e <<EOF
     # Generating a new initramfs.
     echo "Creating a new initramfs."
     mkinitcpio -P &>/dev/null
-
-    #Add parallel downloading
-    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-
-    echo "Installing YAY - AUR-Helper"
-    pacman -S git base-devel
-    git clone https://aur.archlinux.org/yay.git
-    cd yay
-    makepkg -si
-    cd
-    rm -rf yay
-
-    #Enable multilib
-    sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
-    pacman -Sy --noconfirm --needed
     
     # Snapper configuration
     echo "Configuring Snapper."
@@ -290,18 +279,6 @@ arch-chroot /mnt /bin/bash -e <<EOF
     # Creating grub config file.
     echo "Creating GRUB config file."
     grub-mkconfig -o /boot/grub/grub.cfg &>/dev/null
-
-    # INSTALLING STEAM
-    echo "Installing Steam and Discord"
-    pacman -S --noconfirm --needed steam discord
-
-    # INSTALLING BRAVE-BROWSER
-    echo "Installing Brave-browser - The best browser :)"
-    yay -S brave-bin
-
-    # INSTALLING NITROGEN
-    echo "Installing nitrogen - Wallpaper Manager"
-    yay -S nitrogen
 
 EOF
 
@@ -343,17 +320,42 @@ cat > /mnt/etc/systemd/zram-generator.conf <<EOF
 zram-size = min(ram, 8192)
 EOF
 
+# ZRAM configuration.
+print "Making a startup script to install the rest of the system after reboot"
+cat > /mnt/etc/systemd/system/systeminstall.service <<EOF
+[Unit]
+Description=Script
+
+[Service]
+ExecStart=/usr/bin/systeminstall.sh
+
+[Install]
+WantedBy=multi-user.target 
+EOF
+
+cat > /mnt/usr/bin/systeminstall.sh <<EOF
+#!/bin/bash
+
+cd /tmp
+git clone https://github.com/aCeTotal/arch-install.git
+cd arch-install
+chmod +x 2_install.sh
+./2_install.sh
+EOF
+
+chmod +x /mnt/usr/bin/systeminstall.sh
+
 # Pacman eye-candy features.
 print "Enabling colours, animations, and parallel in pacman."
-sed -i 's/#Color/Color\nILoveCandy/;s/^#ParallelDownloads.*$/ParallelDownloads = 10/' /mnt/etc/pacman.conf
+sed -i 's/#Color/Color\nILoveCandy/;s/^#ParallelDownloads.*$/ParallelDownloads = 20/' /mnt/etc/pacman.conf
 
 # Enabling various services.
 print "Enabling Reflector, automatic snapshots, BTRFS scrubbing and systemd-oomd."
-for service in sddm.service reflector.timer snapper-timeline.timer snapper-cleanup.timer btrfs-scrub@-.timer btrfs-scrub@home.timer btrfs-scrub@var-log.timer btrfs-scrub@\\x2esnapshots.timer grub-btrfs.path systemd-oomd
+for service in systeminstall.service reflector.timer snapper-timeline.timer snapper-cleanup.timer btrfs-scrub@-.timer btrfs-scrub@home.timer btrfs-scrub@var-log.timer btrfs-scrub@\\x2esnapshots.timer grub-btrfs.path systemd-oomd
 do
     systemctl enable "$service" --root=/mnt &>/dev/null
 done
 
 # Finishing up.
-print "Done, you may now wish to reboot (further changes can be done by chrooting into /mnt)."
+print "Preinstall script - Done! Reboot and the next script will automaticlly start after you log in =)"
 exit

@@ -9,9 +9,8 @@ screen_refreshrate=100
 
 # Options
 nvidia_gpu=true #Enable if NVIDIA GPU
-amd_gpu=false   #Enable if AMD GPU
 aur_helper=true #AUR-helper YAY
-install_sddm=true #SDDM display manager
+install_ly=true #SDDM display manager
 gaming=true #Gaming packages
 gen_xprofile=true #Generate .xprofile
 enable_multilib=true #Enabling multilib, for packages like Steam 
@@ -68,21 +67,38 @@ protonup
 fi
 
 # Install sddm
-if [[ $install_sddm = true ]]; then
-    sudo pacman -S --noconfirm sddm
-    sudo systemctl enable sddm
+if [[ $install_ly = true ]]; then
+    cd /tmp
+    git clone --recurse-submodules https://github.com/nullgemm/ly.git
+    cd ly
+    make
+    sudo make install
+    sudo systemctl enable ly.service
+    sudo systemctl disable getty@tty2.service
 fi
 
-# .xprofile
-if [[ $gen_xprofile = true ]]; then
+# dwm autostart
+if [[ $gen_autostart = true ]]; then
 cat > ~/.xprofile << EOF
+#!/bin/bash
+
+#NORWEGIAN KEYBOARD LAYOUT
 setxkbmap $kbmap &
-picom -f --experimental-backend &
+
+#Composition
+picom --experimental-backend &
+
+#WALLPAPER MANAGER
 nitrogen --restore & 
+
+#MONITOR SETUP
 xrandr --output $gpu_output --mode $screen_resolution --rate $screen_refreshrate &
+
+#NVIDIA - MAX PERFORMANCE
 nvidia-settings -a [gpu:0]/GPUPowerMizerMode=1 &
 
-polybar &
+#SYSTRAY APPLETS
+nm-applet #Networkmanager
 
 EOF
 fi
@@ -97,6 +113,7 @@ Operation=Remove
 Type=Package
 Target=nvidia-dkms
 Target=linux-zen
+Target=linux-tkg-pds
 
 [Action]
 Description=Update Nvidia module in initcpio
