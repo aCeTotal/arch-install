@@ -59,46 +59,17 @@ kernel_selector () {
     kernel="linux-zen"
 }
 
-# Selecting a way to handle internet connection (function).
-network_selector () {
-    print "Network utilities:"
-    print "1) IWD: iNet wireless daemon is a wireless daemon for Linux written by Intel (WiFi-only)"
-    print "2) NetworkManager: Universal network utility to automatically connect to networks (both WiFi and Ethernet, highly recommended)"
-    print "3) wpa_supplicant: Cross-platform supplicant with support for WEP, WPA and WPA2 (WiFi-only, a DHCP client will be automatically installed as well)"
-    print "4) dhcpcd: Basic DHCP client (Ethernet only or VMs)"
-    print "5) I will do this on my own (only advanced users)"
-    read -r -p "Insert the number of the corresponding networking utility: " network_choice
-    if ! ((1 <= network_choice <= 5)); then
-        incEcho "You did not enter a valid selection."
-        return 1
-    fi
-    return 0
-}
-
 # Installing the chosen networking method to the system (function).
 network_installer () {
-    case $network_choice in
-        1 ) print "Installing IWD."
-            pacstrap /mnt iwd >/dev/null
-            print "Enabling IWD."
-            systemctl enable iwd --root=/mnt &>/dev/null
-            ;;
-        2 ) print "Installing NetworkManager."
-            pacstrap /mnt networkmanager >/dev/null
-            print "Enabling NetworkManager."
-            systemctl enable NetworkManager --root=/mnt &>/dev/null
-            ;;
-        3 ) print "Installing wpa_supplicant and dhcpcd."
-            pacstrap /mnt wpa_supplicant dhcpcd >/dev/null
-            print "Enabling wpa_supplicant and dhcpcd."
-            systemctl enable wpa_supplicant --root=/mnt &>/dev/null
-            systemctl enable dhcpcd --root=/mnt &>/dev/null
-            ;;
-        4 ) print "Installing dhcpcd."
-            pacstrap /mnt dhcpcd >/dev/null
-            print "Enabling dhcpcd."
-            systemctl enable dhcpcd --root=/mnt &>/dev/null
-    esac
+print "Installing NetworkManager."
+pacstrap /mnt networkmanager >/dev/null
+print "Enabling NetworkManager."
+systemctl enable NetworkManager --root=/mnt &>/dev/null
+
+print "Installing Virt-Manager QEMU"
+pacstrap /mnt networkmanager >/dev/null
+print "Enabling libvirtd."
+systemctl enable libvirtd --root=/mnt &>/dev/null
 }
 
 # User enters a password for the LUKS Container (function).
@@ -194,7 +165,7 @@ locale_selector () {
 
 # User chooses the console keyboard layout (function).
 keyboard_selector () {
-    read -r -p "Please insert the keyboard layout to use in console (enter empty to use US, or \"/\" to look up for keyboard layouts): " kblayout
+    read -r -p "Please insert the keyboard layout to use in console (enter empty to use NORWEGIAN, or \"/\" to look up for keyboard layouts): " kblayout
     case $kblayout in
         '') kblayout="no-latin1"
             print "The standard NORWEGIAN will be used as the default console keymap."
@@ -242,9 +213,6 @@ until lukspass_selector; do : ; done
 
 # Setting up the kernel.
 until kernel_selector; do : ; done
-
-# User choses the network.
-until network_selector; do : ; done
 
 # User choses the locale.
 until locale_selector; do : ; done
@@ -315,7 +283,7 @@ mount $ESP /mnt/boot/
 
 # Pacstrap (setting up a base sytem onto the new root).
 print "Installing the base system (it may take a while)."
-pacstrap /mnt --needed base $kernel $microcode linux-firmware $kernel-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
+pacstrap /mnt --needed base xorg $kernel $microcode linux-firmware $kernel-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
 
 # Setting up the hostname.
 echo "$hostname" > /mnt/etc/hostname
@@ -401,6 +369,7 @@ if [ -n "$username" ]; then
     print "Adding the user $username to the system with root privilege."
     arch-chroot /mnt useradd -m -G wheel -s /bin/bash "$username"
     sed -i '/^# %wheel ALL=(ALL) ALL/s/^# //' /mnt/etc/sudoers
+    print "Adding $username to the libvirt group"
     usermod -aG libvirt $username
     sed -i '82s/.//' /mnt/etc/sudoers
     echo "$username ALL=(ALL) ALL" >> /mnt/etc/sudoers.d/$username
@@ -433,18 +402,8 @@ cat > /mnt/etc/systemd/zram-generator.conf <<EOF
 zram-size = min(ram, 8192)
 EOF
 
-# Pacman eye-candy features.
-print "Enabling colours, animations, and parallel in pacman."
-sed -Ei 's/^#(Color)$/\1\nILoveCandy/;s/^#(ParallelDownloads).*/\1 = 10/' /mnt/etc/pacman.conf
-
-# Enabling various services.
-print "Enabling Reflector, automatic snapshots, BTRFS scrubbing and systemd-oomd."
-for service in systeminstall.service reflector.timer snapper-timeline.timer snapper-cleanup.timer btrfs-scrub@-.timer btrfs-scrub@home.timer btrfs-scrub@var-log.timer btrfs-scrub@\\x2esnapshots.timer grub-btrfs.path systemd-oomd
-do
-    systemctl enable "$service" --root=/mnt &>/dev/null
-done
-
 #Create DWM-session for DM
+print "Creating dwm session for ly"
 sudo mkdir /mnt/usr/share/xsessions
 cat > /mnt/usr/share/xsessions/dwm.desktop <<EOF
 [Desktop Entry]
@@ -456,6 +415,17 @@ Icon=dwm
 Type=XSession
 EOF
 
+# Pacman eye-candy features.
+print "Enabling colours, animations, and parallel in pacman."
+sed -Ei 's/^#(Color)$/\1\nILoveCandy/;s/^#(ParallelDownloads).*/\1 = 10/' /mnt/etc/pacman.conf
+
+# Enabling various services.
+print "Enabling Reflector, automatic snapshots, BTRFS scrubbing and systemd-oomd."
+for service in reflector.timer snapper-timeline.timer snapper-cleanup.timer btrfs-scrub@-.timer btrfs-scrub@home.timer btrfs-scrub@var-log.timer btrfs-scrub@\\x2esnapshots.timer grub-btrfs.path systemd-oomd
+do
+    systemctl enable "$service" --root=/mnt &>/dev/null
+done
+
 # Finishing up.
-print "Done. Restart, login as root and run script 2"
+print "Done, you may now wish to reboot (further changes can be done by chrooting into /mnt)."
 exit
