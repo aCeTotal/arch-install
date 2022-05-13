@@ -444,8 +444,9 @@ do
     systemctl enable "$service" --root=/mnt &>/dev/null
 done
 
-sudo mkdir mnt/usr/share/xsessions
-cat > mnt/usr/share/xsessions/dwm.desktop <<EOF
+#Create DWM-session for DM
+sudo mkdir /mnt/usr/share/xsessions
+cat > /mnt/usr/share/xsessions/dwm.desktop <<EOF
 [Desktop Entry]
 Encoding=UTF-8
 Name=Dwm
