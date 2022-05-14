@@ -67,7 +67,7 @@ print "Enabling NetworkManager."
 systemctl enable NetworkManager --root=/mnt &>/dev/null
 
 print "Installing Virt-Manager QEMU"
-pacstrap /mnt networkmanager >/dev/null
+pacstrap /mnt virt-manager qemu qemu-arch-extra >/dev/null
 print "Enabling libvirtd."
 systemctl enable libvirtd --root=/mnt &>/dev/null
 }
