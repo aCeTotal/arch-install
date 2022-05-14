@@ -65,11 +65,6 @@ print "Installing NetworkManager."
 pacstrap /mnt networkmanager >/dev/null
 print "Enabling NetworkManager."
 systemctl enable NetworkManager --root=/mnt &>/dev/null
-
-print "Installing Virt-Manager QEMU"
-pacstrap /mnt virt-manager qemu qemu-arch-extra >/dev/null
-print "Enabling libvirtd."
-systemctl enable libvirtd --root=/mnt &>/dev/null
 }
 
 # User enters a password for the LUKS Container (function).
@@ -283,7 +278,7 @@ mount $ESP /mnt/boot/
 
 # Pacstrap (setting up a base sytem onto the new root).
 print "Installing the base system (it may take a while)."
-pacstrap /mnt --needed base vim xorg nvidia-dkms nvidia-utils nvidia-settings $kernel $microcode linux-firmware $kernel-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
+pacstrap /mnt --needed base xorg $kernel $microcode linux-firmware $kernel-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
 
 # Setting up the hostname.
 echo "$hostname" > /mnt/etc/hostname
@@ -370,8 +365,6 @@ if [ -n "$username" ]; then
     print "Adding the user $username to the system with root privilege."
     arch-chroot /mnt useradd -m -G wheel -s /bin/bash "$username"
     sed -i '/^# %wheel ALL=(ALL) ALL/s/^# //' /mnt/etc/sudoers
-    print "Adding $username to the libvirt group"
-    usermod -aG libvirt $username
     sed -i '82s/.//' /mnt/etc/sudoers
     echo "$username ALL=(ALL) ALL" >> /mnt/etc/sudoers.d/$username
     print "Setting user password for $username."
