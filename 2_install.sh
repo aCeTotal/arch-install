@@ -1,22 +1,5 @@
 #!/bin/bash
 
-# Cosmetics (colours for text).
-BOLD='\e[1m'
-BRED='\e[91m'
-BBLUE='\e[34m'  
-BGREEN='\e[92m'
-BYELLOW='\e[93m'
-RESET='\e[0m'
-
-# Pretty print (function).
-print () {
-    echo -e "${BOLD}${BYELLOW}[ ${BGREEN}•${BYELLOW} ] $1${RESET}"
-}
-# Alert user of bad input (function).
-incEcho () {
-    echo -e "${BOLD}${BRED}[ ${BBLUE}•${BRED} ] $1${RESET}"
-}
-
 # Variables
 country=Norway
 kbmap=no
@@ -60,7 +43,7 @@ git clone https://aur.archlinux.org/yay.git
 cd yay/;makepkg -si --noconfirm;cd
 
 # Install packages
-sudo pacman -S --noconfirm --needed xorg picom nitrogen vim alacritty efibootmgr networkmanager network-manager-applet dialog wpa_supplicant mtools dosfstools base-devel linux-zen-headers avahi xdg-user-dirs xdg-utils gvfs gvfs-smb nfs-utils inetutils dnsutils bluez bluez-utils cups hplip alsa-utils pipewire pipewire-alsa pipewire-pulse pipewire-jack bash-completion openssh rsync reflector acpi acpi_call virt-manager qemu qemu-arch-extra edk2-ovmf bridge-utils dnsmasq vde2 openbsd-netcat iptables-nft ipset firewalld flatpak sof-firmware nss-mdns acpid os-prober ntfs-3g terminus-font
+sudo pacman -S --noconfirm --needed xorg picom nitrogen alacritty efibootmgr network-manager-applet dialog wpa_supplicant mtools dosfstools base-devel linux-zen-headers avahi xdg-user-dirs xdg-utils gvfs gvfs-smb nfs-utils inetutils dnsutils bluez bluez-utils cups hplip alsa-utils pipewire pipewire-alsa pipewire-pulse pipewire-jack bash-completion openssh rsync reflector acpi acpi_call virt-manager qemu qemu-arch-extra edk2-ovmf bridge-utils dnsmasq vde2 openbsd-netcat iptables-nft ipset firewalld flatpak sof-firmware nss-mdns acpid os-prober ntfs-3g terminus-font
 # Install fonts
 sudo pacman -S --noconfirm --needed dina-font tamsyn-font bdf-unifont ttf-bitstream-vera ttf-croscore ttf-dejavu ttf-droid gnu-free-fonts ttf-ibm-plex ttf-liberation ttf-linux-libertine noto-fonts ttf-roboto tex-gyre-fonts ttf-ubuntu-font-family ttf-anonymous-pro ttf-cascadia-code ttf-fantasque-sans-mono ttf-fira-mono ttf-hack ttf-fira-code ttf-inconsolata ttf-jetbrains-mono ttf-monofur adobe-source-code-pro-fonts cantarell-fonts inter-font ttf-opensans gentium-plus-font ttf-junicode adobe-source-han-sans-otc-fonts adobe-source-han-serif-otc-fonts noto-fonts-cjk noto-fonts-emoji
 
@@ -82,33 +65,6 @@ rm config.h
 make
 sudo make install
 cd
-
-# Graphics Drivers find and install
-print "Adding correct modules to mkinitcpio."
-gpu_type=$(lspci)
-if grep -E "NVIDIA|GeForce" <<< ${gpu_type}; then
-    pacman -S --noconfirm --needed nvidia-dkms nvidia-utils nvidia-settings
-    rm /etc/mkinitcpio.conf
-	cat > /etc/mkinitcpio.conf <<EOF
-    MODULES=($microcode btrfs nvidia nvidia_modeset nvidia_uvm nvidia_drm)
-    HOOKS=(base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems)
-    COMPRESSION=(zstd)
-EOF
-elif lspci | grep 'VGA' | grep -E "Radeon|AMD"; then
-    pacman -S --noconfirm --needed xf86-video-amdgpu
-    rm /etc/mkinitcpio.conf
-	cat > /etc/mkinitcpio.conf <<EOF
-    MODULES=($microcode btrfs amdgpu)
-    HOOKS=(base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems)
-    COMPRESSION=(zstd)
-EOF
-elif grep -E "Integrated Graphics Controller" <<< ${gpu_type}; then
-    pacman -S --noconfirm --needed libva-intel-driver libvdpau-va-gl lib32-vulkan-intel vulkan-intel libva-intel-driver libva-utils lib32-mesa
-elif grep -E "Intel Corporation UHD" <<< ${gpu_type}; then
-    pacman -S --needed --noconfirm libva-intel-driver libvdpau-va-gl lib32-vulkan-intel vulkan-intel libva-intel-driver libva-utils lib32-mesa
-fi
-
-mkinitcpio -P
 
 
 # Install Gaming packages

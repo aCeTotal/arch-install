@@ -2,7 +2,6 @@
 
 # Cleaning the TTY.
 clear
-setfont ter-v22b
 
 # Cosmetics (colours for text).
 BOLD='\e[1m'
@@ -56,15 +55,49 @@ virt_check () {
 
 # Selecting a kernel to install (function).
 kernel_selector () {
-    kernel="linux-zen"
+kernel="linux-zen"
+}
+
+# Selecting a way to handle internet connection (function).
+network_selector () {
+    print "Network utilities:"
+    print "1) IWD: iNet wireless daemon is a wireless daemon for Linux written by Intel (WiFi-only)"
+    print "2) NetworkManager: Universal network utility to automatically connect to networks (both WiFi and Ethernet, highly recommended)"
+    print "3) wpa_supplicant: Cross-platform supplicant with support for WEP, WPA and WPA2 (WiFi-only, a DHCP client will be automatically installed as well)"
+    print "4) dhcpcd: Basic DHCP client (Ethernet only or VMs)"
+    print "5) I will do this on my own (only advanced users)"
+    read -r -p "Insert the number of the corresponding networking utility: " network_choice
+    if ! ((1 <= network_choice <= 5)); then
+        incEcho "You did not enter a valid selection."
+        return 1
+    fi
+    return 0
 }
 
 # Installing the chosen networking method to the system (function).
 network_installer () {
-print "Installing NetworkManager."
-pacstrap /mnt networkmanager >/dev/null
-print "Enabling NetworkManager."
-systemctl enable NetworkManager --root=/mnt &>/dev/null
+    case $network_choice in
+        1 ) print "Installing IWD."
+            pacstrap /mnt iwd >/dev/null
+            print "Enabling IWD."
+            systemctl enable iwd --root=/mnt &>/dev/null
+            ;;
+        2 ) print "Installing NetworkManager."
+            pacstrap /mnt networkmanager >/dev/null
+            print "Enabling NetworkManager."
+            systemctl enable NetworkManager --root=/mnt &>/dev/null
+            ;;
+        3 ) print "Installing wpa_supplicant and dhcpcd."
+            pacstrap /mnt wpa_supplicant dhcpcd >/dev/null
+            print "Enabling wpa_supplicant and dhcpcd."
+            systemctl enable wpa_supplicant --root=/mnt &>/dev/null
+            systemctl enable dhcpcd --root=/mnt &>/dev/null
+            ;;
+        4 ) print "Installing dhcpcd."
+            pacstrap /mnt dhcpcd >/dev/null
+            print "Enabling dhcpcd."
+            systemctl enable dhcpcd --root=/mnt &>/dev/null
+    esac
 }
 
 # User enters a password for the LUKS Container (function).
@@ -160,10 +193,10 @@ locale_selector () {
 
 # User chooses the console keyboard layout (function).
 keyboard_selector () {
-    read -r -p "Please insert the keyboard layout to use in console (enter empty to use NORWEGIAN, or \"/\" to look up for keyboard layouts): " kblayout
+    read -r -p "Please insert the keyboard layout to use in console (enter empty to use no-latin1, or \"/\" to look up for keyboard layouts): " kblayout
     case $kblayout in
         '') kblayout="no-latin1"
-            print "The standard NORWEGIAN will be used as the default console keymap."
+            print "The standard US will be used as the default console keymap."
             return 0;;
         '/') localectl list-keymaps
              clear
@@ -208,6 +241,9 @@ until lukspass_selector; do : ; done
 
 # Setting up the kernel.
 until kernel_selector; do : ; done
+
+# User choses the network.
+until network_selector; do : ; done
 
 # User choses the locale.
 until locale_selector; do : ; done
@@ -278,7 +314,7 @@ mount $ESP /mnt/boot/
 
 # Pacstrap (setting up a base sytem onto the new root).
 print "Installing the base system (it may take a while)."
-pacstrap /mnt --needed base xorg $kernel $microcode linux-firmware $kernel-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
+pacstrap /mnt --needed base $kernel $microcode linux-firmware $kernel-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator git vim nvidia-dkms nvidia-utils nvidia-settings >/dev/null
 
 # Setting up the hostname.
 echo "$hostname" > /mnt/etc/hostname
@@ -313,9 +349,6 @@ EOF
 print "Setting up grub config."
 UUID=$(blkid -s UUID -o value $CRYPTROOT)
 sed -i "\,^GRUB_CMDLINE_LINUX=\"\",s,\",&rd.luks.name=$UUID=cryptroot root=$BTRFS," /mnt/etc/default/grub
-sed -i 's/GRUB_DEFAULT=.*/GRUB_DEFAULT=saved/g' /mnt/etc/default/grub
-sudo sed -i '/GRUB_SAVEDEFAULT=.*/d' /mnt/etc/default/grub
-sudo sed -i '$aGRUB_SAVEDEFAULT=true' /mnt/etc/default/grub
 
 # Configuring the system.
 arch-chroot /mnt /bin/bash -e <<EOF
@@ -365,8 +398,6 @@ if [ -n "$username" ]; then
     print "Adding the user $username to the system with root privilege."
     arch-chroot /mnt useradd -m -G wheel -s /bin/bash "$username"
     sed -i '/^# %wheel ALL=(ALL) ALL/s/^# //' /mnt/etc/sudoers
-    sed -i '82s/.//' /mnt/etc/sudoers
-    echo "$username ALL=(ALL) ALL" >> /mnt/etc/sudoers.d/$username
     print "Setting user password for $username."
     echo "$username:$userpass" | arch-chroot /mnt chpasswd
 fi
@@ -389,16 +420,9 @@ When = PostTransaction
 Exec = /usr/bin/rsync -a --delete /boot /.bootbackup
 EOF
 
-# ZRAM configuration.
-print "Configuring ZRAM."
-cat > /mnt/etc/systemd/zram-generator.conf <<EOF
-[zram0]
-zram-size = min(ram, 8192)
-EOF
-
 #Create DWM-session for DM
 print "Creating dwm session for ly"
-sudo mkdir /mnt/usr/share/xsessions
+mkdir /mnt/usr/share/xsessions
 cat > /mnt/usr/share/xsessions/dwm.desktop <<EOF
 [Desktop Entry]
 Encoding=UTF-8
@@ -407,6 +431,13 @@ Comment=Dynamic Window Manager
 Exec=dwm
 Icon=dwm
 Type=XSession
+EOF
+
+# ZRAM configuration.
+print "Configuring ZRAM."
+cat > /mnt/etc/systemd/zram-generator.conf <<EOF
+[zram0]
+zram-size = min(ram, 8192)
 EOF
 
 # Pacman eye-candy features.
