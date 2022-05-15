@@ -269,7 +269,7 @@ virt_check
 # Configuring /etc/mkinitcpio.conf.
 print "Configuring /etc/mkinitcpio.conf."
 cat > /mnt/etc/mkinitcpio.conf <<EOF
-MODULES=(intel-ucode btrfs nvidia nvidia_modeset nvidia_uvm nvidia_drm)
+MODULES=(btrfs nvidia nvidia_modeset nvidia_uvm nvidia_drm)
 HOOKS=(base systemd autodetect keyboard keymap sd-vconsole modconf block sd-encrypt filesystems)
 COMPRESSION=(zstd)
 EOF
