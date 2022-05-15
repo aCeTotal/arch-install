@@ -59,6 +59,7 @@ kernel_selector () {
     print "1) Stable: Vanilla Linux kernel with a few specific Arch Linux patches applied"
     print "2) Hardened: A security-focused Linux kernel"
     print "3) Longterm: Long-term support (LTS) Linux kernel"
+    print "4) Zen Kernel: A Linux kernel optimized for desktop usage"
     read -r -p "Insert the number of the corresponding kernel: " kernel_choice
     case $kernel_choice in
         1 ) kernel="linux"
