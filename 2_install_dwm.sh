@@ -1,16 +1,12 @@
 #!/bin/bash
 
-# Variables
-country=Norway
-kbmap=no
-
 #DESKTOP
 #gpu_output=DP-2
 #screen_resolution=3440x1440
 #screen_refreshrate=100
 
 #LAPTOP
-gpu_output=DP-1
+gpu_output=DP-4
 screen_resolution=1920x1080
 screen_refreshrate=300
 
@@ -33,11 +29,14 @@ sudo systemctl enable --now auto-cpufreq.service
 sudo systemctl enable --now ModemManager.service
 
 # Install packages
-sudo pacman -S --noconfirm --needed xorg efibootmgr networkmanager-openconnect polkit-gnome dialog wpa_supplicant nm-connection-editor mtools dosfstools base-devel linux-zen-headers avahi xdg-user-dirs xdg-utils gvfs gvfs-smb nfs-utils inetutils dnsutils bluez bluez-utils cups hplip alsa-utils pipewire pipewire-alsa pipewire-pulse pipewire-jack bash-completion openssh rsync reflector acpi acpi_call edk2-ovmf bridge-utils dnsmasq vde2 openbsd-netcat iptables-nft ipset firewalld flatpak sof-firmware nss-mdns acpid os-prober ntfs-3g terminus-font
+sudo pacman -S --noconfirm --needed xorg bibata-cursor-theme arc-gtk-theme papirus-icon-theme efibootmgr networkmanager-openconnect polkit-gnome dialog wpa_supplicant nm-connection-editor mtools dosfstools base-devel linux-zen-headers avahi xdg-user-dirs xdg-utils gvfs gvfs-smb nfs-utils inetutils dnsutils bluez bluez-utils cups hplip alsa-utils pipewire pipewire-alsa pipewire-pulse pipewire-jack bash-completion openssh rsync reflector acpi acpi_call edk2-ovmf bridge-utils dnsmasq vde2 openbsd-netcat iptables-nft ipset firewalld flatpak sof-firmware nss-mdns acpid os-prober ntfs-3g terminus-font
 # Install fonts
 sudo pacman -S --noconfirm --needed dina-font tamsyn-font bdf-unifont ttf-bitstream-vera ttf-croscore ttf-dejavu ttf-droid gnu-free-fonts ttf-ibm-plex ttf-liberation ttf-linux-libertine noto-fonts ttf-roboto tex-gyre-fonts ttf-ubuntu-font-family ttf-anonymous-pro ttf-cascadia-code ttf-fantasque-sans-mono ttf-fira-mono ttf-hack ttf-fira-code ttf-inconsolata ttf-jetbrains-mono ttf-monofur adobe-source-code-pro-fonts cantarell-fonts inter-font ttf-opensans gentium-plus-font ttf-junicode adobe-source-han-sans-otc-fonts adobe-source-han-serif-otc-fonts noto-fonts-cjk noto-fonts-emoji ttf-font-awesome awesome-terminal-fonts
 #Intall programs
 sudo pacman -S --noconfirm --needed obs-studio picom nitrogen alacritty blender gimp libreoffice-still pacman-contrib pavucontrol lxappearance thunar volumeicon network-manager-applet blueman virt-manager qemu qemu-arch-extra archlinux-wallpaper
+
+#Install brave-browser
+yay -S brave-bin
 
 #Install NVIDIA Drivers
 sudo pacman -S --needed nvidia-dkms nvidia-utils lib32-nvidia-utils nvidia-settings vulkan-icd-loader lib32-vulkan-icd-loader
@@ -47,8 +46,7 @@ sudo pacman -S --needed nvidia-dkms nvidia-utils lib32-nvidia-utils nvidia-setti
 
 
 #Install dwm
-print "Compiling DWM."
-mkdir ~/.config
+mkdir -p ~/.config
 cd ~/.config
 git clone https://github.com/aCeTotal/dwm.git
 cd dwm
@@ -58,7 +56,6 @@ sudo make install
 cd ..
 
 #Install dmenu
-print "Compiling DMENU."
 git clone https://github.com/aCeTotal/dmenu.git
 cd dmenu
 rm config.h
@@ -77,6 +74,7 @@ yay -S gamemode
 yay -S steamtinkerlaunch
 yay -S goverlay-bin
 yay -S lutris
+protonup
 
 # Install ly
 cd /tmp
@@ -87,8 +85,8 @@ sudo systemctl enable ly
 cd
 
 # dwm autostart
-mkdir ~/.dwm
-cat > ~/.dwm/autostart.sh << EOF
+mkdir -p ~/.local/share/dwm/
+cat > ~/.local/share/dwm/autostart.sh << EOF
 #!/bin/bash
 
 #statusbar
@@ -110,10 +108,11 @@ xrandr --output $gpu_output --mode $screen_resolution --rate $screen_refreshrate
 nvidia-settings -a [gpu:0]/GPUPowerMizerMode=1 &
 
 #SYSTRAY APPLETS
-volumeicon #Volume
-blueman-applet #Bluetooth
-nm-applet #Networkmanager
+volumeicon & #Volume
+blueman-applet & #Bluetooth
+nm-applet & #Networkmanager
 EOF
+chmod +x ~/.local/share/dwm/autostart.sh
 
 # NVIDIA UPDATE HOOK
 sudo cat > /etc/pacman.d/hooks/nvidia.hook << EOF
@@ -135,9 +134,6 @@ Exec=/bin/sh -c 'while read -r trg; do case $trg in linux-zen) exit 0; esac; don
 
 EOF
 
-usermod -aG libvirt lars
-sudo virsh net-autostart default
-
 #Enable services
 sudo systemctl enable --now NetworkManager
 sudo systemctl enable --now bluetooth
@@ -149,5 +145,22 @@ sudo systemctl enable --now fstrim.timer
 sudo systemctl enable --now libvirtd
 sudo systemctl enable --now firewalld
 sudo systemctl enable --now acpid
+
+
+#Adding user to libvirt group
+usermod -aG libvirt lars
+sudo virsh net-autostart default
+
+#Adding dotfiles to .config
+cd ~/.config
+git clone https://github.com/aCeTotal/dotfiles.git
+git clone https://github.com/aCeTotal/dwmblocks.git
+sudo mv backgrounds/ /usr/share/
+cd dwmblocks
+make
+sudo make install
+chmod -R +x statusbar/* && cd
+
+
 
 reboot
