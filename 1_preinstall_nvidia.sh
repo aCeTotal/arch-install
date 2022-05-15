@@ -331,7 +331,7 @@ mount $ESP /mnt/boot/
 
 # Pacstrap (setting up a base sytem onto the new root).
 print "Installing the base system (it may take a while)."
-pacstrap /mnt --needed base $kernel $microcode linux-firmware $kernel-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
+pacstrap /mnt --needed base $kernel $microcode linux-firmware $kernel-headers btrfs-progs grub grub-btrfs git rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
 
 # Setting up the hostname.
 echo "$hostname" > /mnt/etc/hostname
@@ -414,6 +414,8 @@ if [ -n "$username" ]; then
     print "Adding the user $username to the system with root privilege."
     arch-chroot /mnt useradd -m -G wheel -s /bin/bash "$username"
     sed -i '/^# %wheel ALL=(ALL) ALL/s/^# //' /mnt/etc/sudoers
+    sed -i '82s/.//' /mnt/etc/sudoers
+    echo "$username ALL=(ALL) ALL" >> /mnt/etc/sudoers.d/$username
     print "Setting user password for $username."
     echo "$username:$userpass" | arch-chroot /mnt chpasswd
 fi
@@ -434,6 +436,19 @@ Depends = rsync
 Description = Backing up /boot...
 When = PostTransaction
 Exec = /usr/bin/rsync -a --delete /boot /.bootbackup
+EOF
+
+#Create DWM-session for DM
+print "Creating dwm session for ly."
+mkdir /mnt/usr/share/xsessions
+cat > /mnt/usr/share/xsessions/dwm.desktop <<EOF
+[Desktop Entry]
+Encoding=UTF-8
+Name=Dwm
+Comment=Dynamic Window Manager
+Exec=dwm
+Icon=dwm
+Type=XSession
 EOF
 
 # ZRAM configuration.
