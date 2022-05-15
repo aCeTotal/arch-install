@@ -55,7 +55,65 @@ virt_check () {
 
 # Selecting a kernel to install (function).
 kernel_selector () {
-kernel="linux-zen"
+    print "List of kernels:"
+    print "1) Stable: Vanilla Linux kernel with a few specific Arch Linux patches applied"
+    print "2) Hardened: A security-focused Linux kernel"
+    print "3) Longterm: Long-term support (LTS) Linux kernel"
+    read -r -p "Insert the number of the corresponding kernel: " kernel_choice
+    case $kernel_choice in
+        1 ) kernel="linux"
+            return 0;;
+        2 ) kernel="linux-hardened"
+            return 0;;
+        3 ) kernel="linux-lts"
+            return 0;;
+        4 ) kernel="linux-zen"
+            return 0;;
+        * ) incEcho "You did not enter a valid selection."
+            return 1
+    esac
+}
+
+# Selecting a way to handle internet connection (function).
+network_selector () {
+    print "Network utilities:"
+    print "1) IWD: iNet wireless daemon is a wireless daemon for Linux written by Intel (WiFi-only)"
+    print "2) NetworkManager: Universal network utility to automatically connect to networks (both WiFi and Ethernet, highly recommended)"
+    print "3) wpa_supplicant: Cross-platform supplicant with support for WEP, WPA and WPA2 (WiFi-only, a DHCP client will be automatically installed as well)"
+    print "4) dhcpcd: Basic DHCP client (Ethernet only or VMs)"
+    print "5) I will do this on my own (only advanced users)"
+    read -r -p "Insert the number of the corresponding networking utility: " network_choice
+    if ! ((1 <= network_choice <= 5)); then
+        incEcho "You did not enter a valid selection."
+        return 1
+    fi
+    return 0
+}
+
+# Installing the chosen networking method to the system (function).
+network_installer () {
+    case $network_choice in
+        1 ) print "Installing IWD."
+            pacstrap /mnt iwd >/dev/null
+            print "Enabling IWD."
+            systemctl enable iwd --root=/mnt &>/dev/null
+            ;;
+        2 ) print "Installing NetworkManager."
+            pacstrap /mnt networkmanager >/dev/null
+            print "Enabling NetworkManager."
+            systemctl enable NetworkManager --root=/mnt &>/dev/null
+            ;;
+        3 ) print "Installing wpa_supplicant and dhcpcd."
+            pacstrap /mnt wpa_supplicant dhcpcd >/dev/null
+            print "Enabling wpa_supplicant and dhcpcd."
+            systemctl enable wpa_supplicant --root=/mnt &>/dev/null
+            systemctl enable dhcpcd --root=/mnt &>/dev/null
+            ;;
+        4 ) print "Installing dhcpcd."
+            pacstrap /mnt dhcpcd >/dev/null
+            print "Enabling dhcpcd."
+            systemctl enable dhcpcd --root=/mnt &>/dev/null
+    esac
 }
 
 # User enters a password for the LUKS Container (function).
@@ -151,10 +209,10 @@ locale_selector () {
 
 # User chooses the console keyboard layout (function).
 keyboard_selector () {
-    read -r -p "Please insert the keyboard layout to use in console (enter empty to use no-latin1, or \"/\" to look up for keyboard layouts): " kblayout
+    read -r -p "Please insert the keyboard layout to use in console (enter empty to use US, or \"/\" to look up for keyboard layouts): " kblayout
     case $kblayout in
-        '') kblayout="no-latin1"
-            print "Norwegian will be used as the default console keymap."
+        '') kblayout="us"
+            print "The standard US will be used as the default console keymap."
             return 0;;
         '/') localectl list-keymaps
              clear
@@ -171,7 +229,7 @@ keyboard_selector () {
 }
 
 # Welcome screen.
-print "Welcome to the first part of the installation of Arch Linux."
+print "Welcome to easy-arch, a script made in order to simplify the process of installing Arch Linux."
 
 # Setting up keyboard layout.
 until keyboard_selector; do : ; done
@@ -199,6 +257,9 @@ until lukspass_selector; do : ; done
 
 # Setting up the kernel.
 until kernel_selector; do : ; done
+
+# User choses the network.
+until network_selector; do : ; done
 
 # User choses the locale.
 until locale_selector; do : ; done
@@ -269,7 +330,7 @@ mount $ESP /mnt/boot/
 
 # Pacstrap (setting up a base sytem onto the new root).
 print "Installing the base system (it may take a while)."
-pacstrap /mnt --needed base $kernel $microcode linux-firmware $kernel-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator git vim nvidia-dkms nvidia-utils nvidia-settings networkmanager >/dev/null
+pacstrap /mnt --needed base $kernel $microcode linux-firmware $kernel-headers btrfs-progs grub grub-btrfs rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
 
 # Setting up the hostname.
 echo "$hostname" > /mnt/etc/hostname
@@ -289,11 +350,13 @@ microcode_detector
 # Virtualization check.
 virt_check
 
+# Setting up the network.
+network_installer
+
 # Configuring /etc/mkinitcpio.conf.
 print "Configuring /etc/mkinitcpio.conf."
 cat > /mnt/etc/mkinitcpio.conf <<EOF
-MODULES=($microcode btrfs nvidia nvidia_modeset nvidia_uvm nvidia_drm)
-HOOKS=(base systemd autodetect keyboard keymap sd-vconsole modconf block sd-encrypt filesystems)
+HOOKS=(base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems)
 COMPRESSION=(zstd)
 EOF
 
@@ -350,8 +413,6 @@ if [ -n "$username" ]; then
     print "Adding the user $username to the system with root privilege."
     arch-chroot /mnt useradd -m -G wheel -s /bin/bash "$username"
     sed -i '/^# %wheel ALL=(ALL) ALL/s/^# //' /mnt/etc/sudoers
-    sed -i '82s/.//' /mnt/etc/sudoers
-    echo "$username ALL=(ALL) ALL" >> /mnt/etc/sudoers.d/$username
     print "Setting user password for $username."
     echo "$username:$userpass" | arch-chroot /mnt chpasswd
 fi
@@ -374,19 +435,6 @@ When = PostTransaction
 Exec = /usr/bin/rsync -a --delete /boot /.bootbackup
 EOF
 
-#Create DWM-session for DM
-print "Creating dwm session for ly"
-mkdir /mnt/usr/share/xsessions
-cat > /mnt/usr/share/xsessions/dwm.desktop <<EOF
-[Desktop Entry]
-Encoding=UTF-8
-Name=Dwm
-Comment=Dynamic Window Manager
-Exec=dwm
-Icon=dwm
-Type=XSession
-EOF
-
 # ZRAM configuration.
 print "Configuring ZRAM."
 cat > /mnt/etc/systemd/zram-generator.conf <<EOF
@@ -400,7 +448,7 @@ sed -Ei 's/^#(Color)$/\1\nILoveCandy/;s/^#(ParallelDownloads).*/\1 = 10/' /mnt/e
 
 # Enabling various services.
 print "Enabling Reflector, automatic snapshots, BTRFS scrubbing and systemd-oomd."
-for service in NetworkManager reflector.timer snapper-timeline.timer snapper-cleanup.timer btrfs-scrub@-.timer btrfs-scrub@home.timer btrfs-scrub@var-log.timer btrfs-scrub@\\x2esnapshots.timer grub-btrfs.path systemd-oomd
+for service in reflector.timer snapper-timeline.timer snapper-cleanup.timer btrfs-scrub@-.timer btrfs-scrub@home.timer btrfs-scrub@var-log.timer btrfs-scrub@\\x2esnapshots.timer grub-btrfs.path systemd-oomd
 do
     systemctl enable "$service" --root=/mnt &>/dev/null
 done
