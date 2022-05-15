@@ -331,7 +331,7 @@ mount $ESP /mnt/boot/
 
 # Pacstrap (setting up a base sytem onto the new root).
 print "Installing the base system (it may take a while)."
-pacstrap /mnt --needed base $kernel $microcode linux-firmware $kernel-headers btrfs-progs grub grub-btrfs git rsync efibootmgr snapper reflector base-devel snap-pac zram-generator >/dev/null
+pacstrap /mnt --needed base $kernel $microcode linux-firmware $kernel-headers btrfs-progs grub grub-btrfs git rsync efibootmgr snapper reflector base-devel snap-pac zram-generator nvidia-dkms nvidia-utils nvidia-settings >/dev/null
 
 # Setting up the hostname.
 echo "$hostname" > /mnt/etc/hostname
@@ -357,6 +357,7 @@ network_installer
 # Configuring /etc/mkinitcpio.conf.
 print "Configuring /etc/mkinitcpio.conf."
 cat > /mnt/etc/mkinitcpio.conf <<EOF
+MODULES=($microcode btrfs nvidia nvidia_modeset nvidia_uvm nvidia_drm)
 HOOKS=(base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems)
 COMPRESSION=(zstd)
 EOF
