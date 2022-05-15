@@ -278,9 +278,6 @@ EOF
 print "Setting up grub config."
 UUID=$(blkid -s UUID -o value $CRYPTROOT)
 sed -i "\,^GRUB_CMDLINE_LINUX=\"\",s,\",&rd.luks.name=$UUID=cryptroot root=$BTRFS," /mnt/etc/default/grub
-sed -i 's/GRUB_DEFAULT=.*/GRUB_DEFAULT=saved/g' /mnt/etc/default/grub
-sudo sed -i '/GRUB_SAVEDEFAULT=.*/d' /mnt/etc/default/grub
-sudo sed -i '$aGRUB_SAVEDEFAULT=true' /mnt/etc/default/grub
 
 # Configuring the system.
 arch-chroot /mnt /bin/bash -e <<EOF
