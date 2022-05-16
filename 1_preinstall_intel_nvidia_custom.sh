@@ -154,7 +154,7 @@ keyboard_selector () {
 }
 
 # Welcome screen.
-print "Welcome to the first part in the process of installing Arch Linux."
+print "Welcome to the first part 1/2 in the process of installing Arch Linux."
 
 # Setting up keyboard layout.
 until keyboard_selector; do : ; done

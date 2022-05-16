@@ -29,11 +29,11 @@ sudo systemctl enable --now auto-cpufreq.service
 sudo systemctl enable --now ModemManager.service
 
 # Install packages
-sudo pacman -S --noconfirm --needed xorg bibata-cursor-theme arc-gtk-theme papirus-icon-theme efibootmgr networkmanager-openconnect polkit-gnome dialog wpa_supplicant nm-connection-editor mtools dosfstools base-devel linux-zen-headers avahi xdg-user-dirs xdg-utils gvfs gvfs-smb nfs-utils inetutils dnsutils bluez bluez-utils cups hplip alsa-utils bash-completion openssh rsync reflector acpi acpi_call edk2-ovmf bridge-utils dnsmasq vde2 openbsd-netcat iptables-nft ipset firewalld flatpak sof-firmware nss-mdns acpid os-prober ntfs-3g terminus-font
+sudo pacman -S --noconfirm --needed xorg bibata-cursor-theme arc-gtk-theme papirus-icon-theme efibootmgr polkit-gnome dialog wpa_supplicant nm-connection-editor mtools dosfstools base-devel linux-zen-headers avahi xdg-user-dirs xdg-utils gvfs gvfs-smb nfs-utils inetutils dnsutils bluez bluez-utils cups hplip alsa-utils bash-completion openssh rsync reflector acpi acpi_call edk2-ovmf bridge-utils dnsmasq vde2 openbsd-netcat iptables-nft ipset firewalld flatpak sof-firmware nss-mdns acpid os-prober ntfs-3g terminus-font
 # Install fonts
 sudo pacman -S --noconfirm --needed dina-font tamsyn-font bdf-unifont ttf-bitstream-vera ttf-croscore ttf-dejavu ttf-droid gnu-free-fonts ttf-ibm-plex ttf-liberation ttf-linux-libertine noto-fonts ttf-roboto tex-gyre-fonts ttf-ubuntu-font-family ttf-anonymous-pro ttf-cascadia-code ttf-fantasque-sans-mono ttf-fira-mono ttf-hack ttf-fira-code ttf-inconsolata ttf-jetbrains-mono ttf-monofur adobe-source-code-pro-fonts cantarell-fonts inter-font ttf-opensans gentium-plus-font ttf-junicode adobe-source-han-sans-otc-fonts adobe-source-han-serif-otc-fonts noto-fonts-cjk noto-fonts-emoji ttf-font-awesome awesome-terminal-fonts
 #Intall programs
-sudo pacman -S --noconfirm --needed obs-studio picom nitrogen alacritty blender gimp libreoffice-still pacman-contrib pavucontrol lxappearance thunar volumeicon network-manager-applet blueman virt-manager qemu qemu-arch-extra archlinux-wallpaper
+sudo pacman -S --noconfirm --needed obs-studio picom nitrogen alacritty blender gimp libreoffice-still pacman-contrib pavucontrol lxappearance thunar volumeicon networkmanager-openconnect network-manager-applet blueman virt-manager qemu qemu-arch-extra archlinux-wallpaper
 
 #Install sound
 sudo pacman -S --noconfirm --needed pipewire-docs wireplumber pipewire pipewire-pulse pipewire-alsa
@@ -52,15 +52,15 @@ sudo pacman -S --needed nvidia-dkms nvidia-utils lib32-nvidia-utils nvidia-setti
 mkdir -p ~/.config
 cd ~/.config
 git clone https://github.com/aCeTotal/dwm.git
-cd dwm
+cd ~/.config/dwm
 config.h
 make
 sudo make install
-cd ..
 
 #Install dmenu
+cd ~/.config/
 git clone https://github.com/aCeTotal/dmenu.git
-cd dmenu
+cd ~/.config/dmenu
 rm config.h
 make
 sudo make install
@@ -159,10 +159,10 @@ cd ~/.config
 git clone https://github.com/aCeTotal/dotfiles.git
 git clone https://github.com/aCeTotal/dwmblocks.git
 sudo mv backgrounds/ /usr/share/
-cd dwmblocks
+cd ~/.config/dwmblocks
 make
 sudo make install
-chmod -R +x statusbar/* && cd
+chmod -R +x ~/.config/dwmblocks/statusbar/* && cd
 
 
 
