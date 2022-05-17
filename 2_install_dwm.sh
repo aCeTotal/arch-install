@@ -93,28 +93,38 @@ mkdir -p ~/.local/share/dwm/
 cat > ~/.local/share/dwm/autostart.sh << EOF
 #!/bin/bash
 
+function run {
+	if ! pgrep $1 ;
+		then
+			$@&
+		fi
+ }
+
 #statusbar
-dwmblocks &
+run "dwmblocks"
 
 #NORWEGIAN KEYBOARD LAYOUT
-setxkbmap no &
+run "setxkbmap no"
 
 #Composition
-picom --experimental-backend &
+run "picom --experimental-backend"
 
 #WALLPAPER MANAGER
-nitrogen --restore & 
+run "nitrogen --restore" 
 
 #MONITOR SETUP
-xrandr --output $gpu_output --mode $screen_resolution --rate $screen_refreshrate &
+run "xrandr --output DP-4 --mode 1920x1080 --rate 300"
 
 #NVIDIA - MAX PERFORMANCE
-nvidia-settings -a [gpu:0]/GPUPowerMizerMode=1 &
+run "nvidia-settings -a [gpu:0]/GPUPowerMizerMode=1"
+
+run "numlockx on"
 
 #SYSTRAY APPLETS
-volumeicon & #Volume
-blueman-applet & #Bluetooth
-nm-applet & #Networkmanager
+run "blueman-applet"
+run "nm-applet"
+run "pamac-tray"
+run "volumeicon"
 EOF
 chmod +x ~/.local/share/dwm/autostart.sh
 
@@ -167,7 +177,7 @@ sudo make install
 chmod -R +x ~/.config/dwmblocks/statusbar/* && cd
 
 #Setup cursor, icons, theme and config
-yay -S lxappearance
+yay -S lxappearance numlockx
 yay -S arc-gtk-theme 
 yay -S bibata-cursor-theme
 yay -S papirus-icon-theme
@@ -183,5 +193,8 @@ mv ~/.config/dotfiles/yay/ ~/.config/yay/
 
 rm -rf ~/.config/volumeicon
 mv ~/.config/dotfiles/volumeicon/ ~/.config/volumeicon/
+
+rm -rf ~/.config/dotfiles
+rm -rf ~/arch-install
 
 reboot
