@@ -177,7 +177,8 @@ sudo make install
 chmod -R +x ~/.config/dwmblocks/statusbar/* && cd
 
 #Setup cursor, icons, theme and config
-yay -S lxappearance numlockx
+yay -S lxappearance 
+yay -S numlockx
 yay -S arc-gtk-theme 
 yay -S bibata-cursor-theme
 yay -S papirus-icon-theme
