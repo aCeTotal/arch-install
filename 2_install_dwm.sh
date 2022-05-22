@@ -93,6 +93,7 @@ mkdir -p ~/.local/share/dwm/
 cat > ~/.local/share/dwm/autostart.sh << EOF
 #!/bin/bash
 
+
 function run {
 	if ! pgrep $1 ;
 		then
